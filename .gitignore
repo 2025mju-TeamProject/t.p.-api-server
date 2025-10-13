@@ -163,5 +163,8 @@ cython_debug/
 #.idea/
 
 /TeamProject/settings.py
+
+
+!/.venv/
 .venv/bin
 .venv/
