@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat with User {{ other_user_id }}</title>
+</head>
+<body>
+    <h1>Chat Room</h1>
+    <div id="chat-log" style="border:1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px;"></div>
+    <br>
+    <input id="chat-message-input" type="text" size="100"><br>
+    <input id="chat-message-submit" type="button" value="Send">
+
+    {{ other_user_id|json_script:"other-user-id" }}
+
+    <script>
+        const otherUserId = JSON.parse(document.getElementById('other-user-id').textContent);
+        const chatLog = document.querySelector('#chat-log');
+        const messageInput = document.querySelector('#chat-message-input');
+
+        // WebSocket 연결 생성
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/' + otherUserId + '/'
+        );
+
+        // 서버로부터 메시지를 받았을 때
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            chatLog.innerHTML += '<div><b>' + data.sender + '</b>: ' + data.message + '</div>';
+            chatLog.scrollTop = chatLog.scrollHeight; // 스크롤을 맨 아래로
+        };
+
+        // 연결이 닫혔을 때
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        messageInput.focus();
+        messageInput.onkeyup = function(e) {
+            if (e.keyCode === 13) {  // enter, return
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const message = messageInput.value;
+            // 서버로 JSON 메시지 전송
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInput.value = '';
+        };
+    </script>
+</body>
+</html>
