@@ -35,7 +35,7 @@ def generate_profile(request: Request) -> JsonResponse:
         mbti = data.get('mbti')
 
         if hobbies and not isinstance(hobbies, list):
-             return JsonResponse({'error': '취미(hobbies)는 반드시 리스트(배열) 형태여야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'error': '취미(hobbies)는 반드시 리스트(배열) 형태여야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
     except (KeyError, ValueError):
         return JsonResponse({"error": "필수 정보가 누락되었거나, 데이터 형식이 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)

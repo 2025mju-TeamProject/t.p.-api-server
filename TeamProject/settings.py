@@ -21,7 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 localKeys = os.path.join(BASE_DIR, 'local.json')
 
 with open(localKeys) as f:
-    secrets = json.load(f.read())
+    secrets = json.load(f)
 
 
 def get_secret(setting):
@@ -102,7 +102,7 @@ ASGI_APPLICATION = 'TeamProject.asgi.application'
 # 3. 채널 레이어 설정 (메시지 브로커)
 CHANNEL_LAYERS = {
     "default" : {
-        "BACKEND": "channels.redis.core.RedisChannelLayer",
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [("127.0.0.1", 6379)],
         },
