@@ -58,3 +58,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': message,
                 'sender': sender
             }))
+
+# TODO : 채팅 기능 구현해야됩니다.
+# 1. User1, User2끼리 로그인은 가능하나 서로 채팅을 보내면 에러 메시지 뜸
+# 2. ID : testuser1, testuser2 , PW : 1q2w3e4r!(둘 다임)
+
