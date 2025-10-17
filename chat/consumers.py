@@ -62,4 +62,5 @@ class ChatConsumer(AsyncWebsocketConsumer):
 # TODO : 채팅 기능 구현해야됩니다.
 # 1. User1, User2끼리 로그인은 가능하나 서로 채팅을 보내면 에러 메시지 뜸
 # 2. ID : testuser1, testuser2 , PW : 1q2w3e4r!(둘 다임)
-
+# 3.  "GET /ws/chat/1/ HTTP/1.1" 404 2505 <- 병신새끼 오류 ㅈㄴ 뜸
+# 4. 아 배터리 10퍼 남아서 나머지는 부탁하마. 푸시할게 화이팅 모르는 거 있으면 톡으로 ㄱㄱㄱ
