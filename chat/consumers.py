@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 class ChatConsumer(AsyncWebsocketConsumer):
-    # WebSocket 연결이 시작될 때 실행
+    # WebSocket 연결이 시작될 때 실행해보리기
     async def connect(self):
         # URL에서 상대방 user_id를 가져옴
         self.other_user_id = self.scope['url_route']['kwargs']['other_user_id']
