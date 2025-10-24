@@ -1,6 +1,9 @@
 ﻿import json
-from channels.generic.websocket import AsyncWebsocketConsumer
 
+from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
+from .models import ChatRoom, Message # 모델 임포트
+from django.contrib.auth.models import User # User 모델 임포트 ( sender 저장용 )
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -53,3 +56,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
+
+@database_sync_to_async
+def get_or_create_room(self, room_name):
+    """DB에서 채팅방을 찾거나, 없으면 새로 생성함"""
+    room, created = ChatRoom.objects.get_or_create(name=room_name)
+    return room
+
+@database_sync_to_async
+def save_message(self, room, user, content):
+    """채팅 메시지를 DB에 저장함"""
+    Message.objects.create(room=room, sender=user, content=content)
