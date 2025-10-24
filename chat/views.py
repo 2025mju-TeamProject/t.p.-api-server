@@ -67,7 +67,7 @@ class MessageHistoryView(APIView):
 
         except ChatRoom.DoesNotExist:
             # 아직 대화가 시작 안 돼서 ChatRoom 없는 경우
-            return Response([], ststus=status.HTTP_200_OK)
+            return Response([], status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"메시지를 불러오는 중 오류 발생: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
