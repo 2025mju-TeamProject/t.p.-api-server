@@ -71,7 +71,7 @@ class MessageHistoryView(APIView):
         try:
             user_ids = [int(uid) for uid in room_name.split('-')]
             # room_name에서 내 ID각 아닌 다른 ID를 찾음
-            other_user_ids = [uid for uid in user_ids if uid != request.user.id][0]
+            other_user_id = [uid for uid in user_ids if uid != request.user.id][0]
             other_user = User.objects.get(id=other_user_id)
 
             is_blocked = Block.objects.filter(
