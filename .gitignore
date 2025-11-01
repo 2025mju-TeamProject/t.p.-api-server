@@ -169,5 +169,4 @@ local.json
 .venv/bin
 .venv/
 
-# Database
 db.sqlite3

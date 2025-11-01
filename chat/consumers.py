@@ -2,12 +2,14 @@
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-from .models import ChatRoom, Message # 모델 임포트
+from .models import ChatRoom, Message, Block # 모델 임포트
 from django.contrib.auth import get_user_model # User 모델 임포트 ( sender 저장용 )
+from django.db.models import Q
 
 User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
+
     async def connect(self):
         user = self.scope["user"]
         if user.is_anonymous:
@@ -16,6 +18,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = f"chat_{self.room_name}"
+
+        # 차단 확인 로직
+        try:
+            user_id = [int(uid) for uid in self.room_name.split('-')]
+            other_user_id = [uid for uid in user_id if uid != user.id][0]
+            other_user = await self.get_user_instance(other_user_id)
+
+            if await self.is_blocked(user, other_user):
+                await self.close() # 차단했다면 연결 거부                return
+        except Exception:
+            await self.close() # room_name이 이상하거나 유저가 없으면 거부
+            return
 
         # DB에서 채팅방을 찾거나, 없으면 새로 생성
         self.room = await self.get_or_create_room(self.room_name)
@@ -70,3 +84,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, room, user, content):
         """채팅 메시지를 DB에 저장함"""
         Message.objects.create(room=room, sender=user, content=content)
+
+    @database_sync_to_async
+    def get_user_instance(self, user_id):
+        """(비동기) ID로 유저 객체 가져오기"""
+        try:
+            return User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def is_blocked(self, user1, user2):
+        """(비동기) 두 사용자 간에 차단이 있는지 확인"""
+        if user1 is None or user2 is None:
+            return True # 유저가 없을 시, 차단으로 간주
+        return Block.objects.filter(
+            Q(blocker=user1, blocked=user2) |
+            Q(blocker=user2, blocked=user1)
+        ).exists()
