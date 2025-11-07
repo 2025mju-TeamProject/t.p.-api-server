@@ -1,15 +1,44 @@
 import openai
 from django.conf import settings
 from django.http import JsonResponse
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
-from rest_framework import status
 
-# 사주 계산 로직을 불러옵니다. 이 함수가 모든 사주 관련 계산을 전담합니다.
 from .saju_calculator import calculate_saju
+from .models import Profile
+from .serializers import (
+    ProfileSerializer,
+    ProfileTextUpdateSerializer,
+    UserRegistrationSerializer
+)
+
 
 # settings.py에서 API 키를 불러옵니다.
 openai.api_key = settings.OPENAI_API_KEY
+
+# 회원가입 View
+class UserRegistationView(APIView):
+    """
+    회원가입 API View
+    (누구나 접근 가능해야 함)
+    """
+    permission_classes = [permissions.AllowAny] # 인증 없이 접근 허용
+
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            # serializer.save() 호출 -> 내부에서 .create() 메서드 실행
+            user = serializer.save()
+
+            # (선택) 회원가입 성공 시, 바로 토큰 발급해줄 수 있음
+            # (일단 성공 메시지만 return)
+            return Response({"message": "회원가입이 성공적으로 완료되었습니다."}, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # 1. AI 기반 프로필 자동 생성 기능 (기준이 되는 핵심 함수)

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
 from django.core.exceptions import ValidationError
 
-class UserRegistrationSerialzer(serializers.ModelSerializer):
+class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     회원갇입을 위한 Serializer
     (ID, PW, PW 확인)
