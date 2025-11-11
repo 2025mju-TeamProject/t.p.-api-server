@@ -5,6 +5,7 @@ from django.db import models
 from django.db import models
 from django.conf import settings
 from django.db.models import Q
+from django.core.validators import RegexValidator
 
 class ChatRoom(models.Model):
     # 'some_room_name' 같은 채팅방의 고유 이름
@@ -54,11 +55,25 @@ class UserProfile(models.Model):
         related_name='profile',
         on_delete=models.CASCADE,
     )
-    bio = models.TextField(blank=True)  # 자기소개
-    hobbies = models.JSONField(default=list, blank=True)  # 취미 목록(프론트에서 리스트 JSON으로 전달)
-    preferences = models.JSONField(default=dict, blank=True)  # 이상형/취향 키-값
-    avatar = models.CharField(max_length=512, blank=True)  # 사진 파일 경로나 외부 URL
+    birth_date = models.DateField()  # 생년월일(쿼리 최적화용 DateField)
+    birth_time = models.TimeField()  # 태어난 시간(사주 계산 시 hour/minute 추출)
+    profile_text = models.TextField(blank=True)  # AI가 생성한 프로필 문구
+    #bio = models.TextField(blank=True)  #추가 프로필?
+    hobbies = models.JSONField(default=list, blank=True)  # 취미 목록(프론트 JSON 그대로 저장)
+    #preferences = models.JSONField(default=dict, blank=True)  # 이상형/취향 키-값 JSON
+    photos = models.JSONField(default=list, blank=True)  # 프로필 사진 배열(경로/URL 리스트)
+    mbti = models.CharField(
+        max_length=4,
+        blank=True,
+        validators=[RegexValidator(regex=r'^[A-Z]{4}$', message='MBTI는 대문자 4글자여야 합니다.')],
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'Profile of {self.user.username}'
+
+    def save(self, *args, **kwargs):
+        # MBTI는 항상 대문자 4글자로 저장
+        if getattr(self, 'mbti', None):
+            self.mbti = self.mbti.upper()
+        super().save(*args, **kwargs)
