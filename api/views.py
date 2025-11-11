@@ -40,6 +40,27 @@ class UserRegistationView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# 1. 프로필 관리 View (조회, AI 프로필 생성, 수동 수정)
+"""
+로그인한 사용자의 프로필을 다루는 View
+- GET: 내 프로필 정보 조회
+- POST: 내 정보로 AI 프로필 생성
+- PATCH: 사용자가 AI 프로필 텍스트 수정
+"""
+permissions_classes = [permissions.IsAuthenticated] # 로그인 필수
+
+def get(self, request):
+    """
+    [GET] 로그인한 사용자의 프로필 정보를 반환
+    """
+    profile = request.user.profile
+    serializer = ProfileSerializer(profile)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+def post(self, request):
+    """
+    [POST] 사용자의 기본 정보로 AI 프로필을 생성 DB에 저장
+    """
 
 # 1. AI 기반 프로필 자동 생성 기능 (기준이 되는 핵심 함수)
 @api_view(['POST'])
