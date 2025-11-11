@@ -45,3 +45,20 @@ class Block(models.Model):
 
     def __str__(self):
         return f'{self.blocker.username} blocked {self.blocked.username}'
+
+
+class UserProfile(models.Model):
+    """소개팅 앱용 사용자 프로필 확장 정보"""
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name='profile',
+        on_delete=models.CASCADE,
+    )
+    bio = models.TextField(blank=True)  # 자기소개
+    hobbies = models.JSONField(default=list, blank=True)  # 취미 목록(프론트에서 리스트 JSON으로 전달)
+    preferences = models.JSONField(default=dict, blank=True)  # 이상형/취향 키-값
+    avatar = models.CharField(max_length=512, blank=True)  # 사진 파일 경로나 외부 URL
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'Profile of {self.user.username}'
