@@ -7,7 +7,7 @@ from django.contrib.auth.password_validation import validate_password # Django �
 from django.core.exceptions import ValidationError
 
 # 1. 프로필 관리용 시리얼라이저
-class ProfileSErializer(serializers.ModelSerializer):
+class ProfileSerializer(serializers.ModelSerializer):
     """
     [GET, POST] 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
     """
