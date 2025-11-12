@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'daphne',
     'chat',
     'api',
+    'profiles',
     'rest_framework',
     'corsheaders',
     'django.contrib.admin',
