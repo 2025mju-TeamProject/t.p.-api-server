@@ -1,24 +1,46 @@
 # api/serializers.py
 
 from rest_framework import serializers
+from .models import Profile
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
 from django.core.exceptions import ValidationError
 
+# 1. 프로필 관리용 시리얼라이저
+class ProfileSErializer(serializers.ModelSerializer):
+    """
+    [GET, POST] 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
+    """
+    class Meta:
+        model = Profile
+        # 'user' 필드를 제외한 Profile 모델의 모든 필드를 다룹니다
+        fields = [
+            'nickname', 'year', 'month', 'day', 'hour', 'minute',
+            'gender', 'job', 'hobbies', 'mbti', 'profile_text'
+        ]
+
+class ProfileTextUpdateSerializer(serializers.ModelSerializer):
+    """
+    [PATCH] 사용자가 'profile_text' 필드 수정할 때 사용
+    """
+    class Meta:
+        model = Profile
+        fields = ['profile_text']
+
+# 2. 회원가입/로그인용 시리얼라이저
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
-    회원갇입을 위한 Serializer
+    회원가입을 위한 Serializer
     (ID, PW, PW 확인)
     """
-
-    # 1. 'password'는 쓰기 전용으로 설정
+    # 1. 'password'는 쓰기 전용, Django 기본 검증 통과해야함
     password = serializers.CharField(
         write_only=True,
         required=True,
         validators=[validate_password] # Django의 기본 비밀번호 검증 적용
     )
 
-    # 2. 'password_verify'는 DB에 쓰이지 않고 검증용으로만 사용
+    # 2. 'password_verify'는 검증용으로만 사용(DB에 안 쓰임)
     password_verify = serializers.CharField(
         write_only=True,
         required=True
@@ -46,7 +68,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        검증(validate) 완료 후, 사용자를 생성(create)하는 메서드
+        검증 완료 후, 사용자를 생성하는 메서드
         """
         # DB에 저장되지 않는 password_verify 필드 제거함
         validated_data.pop('password_verify')
