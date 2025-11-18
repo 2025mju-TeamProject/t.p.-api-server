@@ -45,10 +45,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True
     )
+    phone_number = serializers.CharField(write_only=True, required=True, max_length=20)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password_verify')
+        fields = ('username', 'password', 'password_verify', 'phone_number')
 
     def validate_username(selfself, value):
         """
@@ -56,6 +57,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError("이미 등록된 아이디입니다.")
+        return value
+    def validate_phone_number(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("'-' 없이 11자리 숫자만 입력해 주세요.")
+
+        if len(value) != 11:
+            raise serializers.ValidationError("휴대폰 번호는 11자리여야 합니다.")
+
         return value
 
     def validate(self, data):
@@ -72,10 +81,19 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """
         # DB에 저장되지 않는 password_verify 필드 제거함
         validated_data.pop('password_verify')
+        phone_number = validated_data.pop('phone_number')
 
         # create_user()를 사용해야 해사로 저장됨
         user = User.objects.create_user(
             username = validated_data['username'],
             password = validated_data['password']
         )
+
+        try:
+            profile = user.profile
+            profile.phone_number = phone_number
+            profile.save()
+        except Profile.DoesNotExist:
+            Profile.objects.create(user=user, phone_number=phone_number)
+
         return user

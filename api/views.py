@@ -29,7 +29,7 @@ openai.api_key = settings.OPENAI_API_KEY
 - PATCH: 사용자가 AI 프로필 텍스트 수정
 """
 class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
-    permissions_classes = [permissions.IsAuthenticated] # 로그인 필수
+    permission_classes = [permissions.IsAuthenticated] # 로그인 필수
 
 
     def get(self, request):
@@ -63,7 +63,7 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
             if profile.hobbies and not isinstance(profile.hobbies, list):
                 return Response({'error': '취미(hobbies)는 반드시 배열리스트 형태여야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        except (KeyError, TypeError):
+        except (KeyError, ValueError, TypeError):
             return Response({"error": "필수 정보가 누락되었거나, 데이터 형식이 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         saju_data = calculate_saju(profile.year, profile.month, profile.day, profile.hour, profile.minute)
@@ -142,76 +142,6 @@ class UserRegistrationView(APIView):
             return Response({"message": "회원가입이 성공적으로 완료되었습니다."}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# 1. AI 기반 프로필 자동 생성 기능 (기준이 되는 핵심 함수)
-# @api_view(['POST'])
-# def generate_profile(request: Request) -> JsonResponse:
-#     """
-#     사용자의 필수 정보와 선택 정보(취미, MBTI)를 받아
-#     사주를 계산하고, 이를 결합하여 AI 프로필을 생성합니다.
-#     """
-#     try:
-#         data = request.data
-#         # 필수 정보 추출 및 변환
-#         nickname = data['nickname']
-#         year = int(data['year'])
-#         month = int(data['month'])
-#         day = int(data['day'])
-#         hour = int(data['hour'])
-#         minute = int(data['minute'])
-#         gender = data['gender']
-#         job = data['job']
-#         # 선택 정보 추출
-#         hobbies = data.get('hobbies')
-#         mbti = data.get('mbti')
-#
-#         if hobbies and not isinstance(hobbies, list):
-#             return JsonResponse({'error': '취미(hobbies)는 반드시 리스트(배열) 형태여야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
-#
-#     except (KeyError, ValueError):
-#         return JsonResponse({"error": "필수 정보가 누락되었거나, 데이터 형식이 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
-#
-#     # 사주 계산
-#     saju_data = calculate_saju(year, month, day, hour, minute)
-#     if "error" in saju_data:
-#         return JsonResponse(saju_data, status=status.HTTP_400_BAD_REQUEST)
-#
-#     my_saju_pillar = saju_data.get('day_pillar')
-#
-#     # AI 프롬프트 동적 구성
-#     prompt_lines = [
-#         "아래 정보를 바탕으로, 데이팅 앱에서 사용할 매력적이고 진솔한 자기소개 문구를 200자 내외로 자연스럽게 작성해줘.",
-#         "특히 '타고난 사주 성향' 정보를 참고해서 그 사람의 성격이 은은하게 드러나도록 문장을 만들어 줘.",
-#         "",
-#         f"- 닉네임: {nickname}",
-#         f"- 성별: {gender}",
-#         f"- 직업: {job}",
-#         f"- 타고난 사주 성향 (일주): {my_saju_pillar}"
-#     ]
-#     if hobbies:
-#         prompt_lines.append(f"- 취미: {', '.join(hobbies)}")
-#     if mbti:
-#         prompt_lines.append(f"- MBTI: {mbti}")
-#     prompt_lines.extend(["", "- 톤앤매너: 친근하고 긍정적인 느낌, 약간의 유머와 센스 포함"])
-#     prompt = "\n".join(prompt_lines)
-#
-#     try:
-#         # OpenAI API 호출
-#         response = openai.chat.completions.create(
-#             model="gpt-4",
-#             messages=[
-#                 {"role": "system", "content": "You are a creative assistant who is an expert in writing appealing dating app profiles based on personality and Saju."},
-#                 {"role": "user", "content": prompt}
-#             ],
-#             temperature=0.8,
-#             max_tokens=300
-#         )
-#         profile_text = response.choices[0].message.content
-#         cleaned_profile = profile_text.strip().strip('"')
-#         return JsonResponse({'profile': cleaned_profile}, status=status.HTTP_201_CREATED)
-#
-#     except Exception as e:
-#         return JsonResponse({'error': f'AI 프로필 생성에 실패했습니다: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # 2. AI 기반 궁합/취향 분석 리포트 제공 기능 (향후 개발 예정)

@@ -23,7 +23,7 @@ class Profile(models.Model):
     job = models.CharField(max_length=50, blank=True, null=True)
     hobbies = models.JSONField(blank=True, null=True)  # 리스트는 JSONField로 저장
     mbti = models.CharField(max_length=10, blank=True, null=True)
-
+    phone_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
     # 2. GPT가 생성하고, 사용자가 수정할 필드
     profile_text = models.TextField(blank=True, null=True)
 
