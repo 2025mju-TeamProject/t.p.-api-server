@@ -5,6 +5,7 @@ from .models import Profile
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
 from django.core.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
 
 # 1. 프로필 관리용 시리얼라이저
 class ProfileSerializer(serializers.ModelSerializer):
@@ -31,7 +32,7 @@ class ProfileTextUpdateSerializer(serializers.ModelSerializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     회원가입을 위한 Serializer
-    (ID, PW, PW 확인)
+    (ID, PW, PW 확인, 휴대폰 번호)
     """
     # 1. 'password'는 쓰기 전용, Django 기본 검증 통과해야함
     password = serializers.CharField(
@@ -47,17 +48,29 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     )
     phone_number = serializers.CharField(write_only=True, required=True, max_length=20)
 
+    username = serializers.CharField(
+        required=True,
+        max_length=150,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="이미 등록된 아이디입니다."
+            )
+        ]
+    )
+
     class Meta:
         model = User
         fields = ('username', 'password', 'password_verify', 'phone_number')
 
-    def validate_username(selfself, value):
-        """
-        ID(username) 중복 확인
-        """
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("이미 등록된 아이디입니다.")
-        return value
+    # def validate_username(self, value):
+    #     """
+    #     ID(username) 중복 확인
+    #     """
+    #     if User.objects.filter(username=value).exists():
+    #         raise serializers.ValidationError("이미 등록된 아이디입니다.")
+    #     return value
+
     def validate_phone_number(self, value):
         if not value.isdigit():
             raise serializers.ValidationError("'-' 없이 11자리 숫자만 입력해 주세요.")
