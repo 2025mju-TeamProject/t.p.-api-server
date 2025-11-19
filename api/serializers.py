@@ -123,7 +123,7 @@ class MyTokenObtainPairSerializer(TokenObtainSerializer):
             # 1. SimpleJWT의 기본 로그인 검증 먼저 실행
             data = super().validate(attrs)
 
-        except serializers.ValidateionError as e:
+        except serializers.ValidationError as e:
             # 2. 기본 검증에서 로그인 실패 시,
             #    e.codes에 'no_activate_account'가 포함됨
             if 'no_activate_account' in e.codes:
