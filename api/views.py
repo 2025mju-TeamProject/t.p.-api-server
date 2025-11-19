@@ -7,13 +7,14 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .saju_calculator import calculate_saju
 from .models import Profile
 from .serializers import (
     ProfileSerializer,
     ProfileTextUpdateSerializer,
-    UserRegistrationSerializer
+    UserRegistrationSerializer, MyTokenObtainPairSerializer
 )
 
 
@@ -143,6 +144,13 @@ class UserRegistrationView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class MyTokenObtainPairView(TokenObtainPairView):
+    """
+    로그인 view 상속받고
+    serializer_class를 MyTokenObtainPairView로 지정
+    """
+
+    serializer_class = MyTokenObtainPairSerializer
 
 # 2. AI 기반 궁합/취향 분석 리포트 제공 기능 (향후 개발 예정)
 @api_view(['POST'])
@@ -195,6 +203,3 @@ def get_saju_api(request: Request) -> JsonResponse:
         return JsonResponse(saju_data, status=status.HTTP_400_BAD_REQUEST)
 
     return JsonResponse(saju_data, status=status.HTTP_200_OK)
-
-# TODO:
-# 1. ID 중복 확인 기능 추가

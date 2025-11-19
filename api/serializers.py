@@ -1,6 +1,8 @@
 # api/serializers.py
 
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
+
 from .models import Profile
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
@@ -110,3 +112,25 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             Profile.objects.create(user=user, phone_number=phone_number)
 
         return user
+
+class MyTokenObtainPairSerializer(TokenObtainSerializer):
+    """
+    SimpleJWT의 기본 로그인 시리얼라이즈 상속 -> 로그인 실패 예외 추가
+    """
+
+    def validate(self, attrs):
+        try:
+            # 1. SimpleJWT의 기본 로그인 검증 먼저 실행
+            data = super().validate(attrs)
+
+        except serializers.ValidateionError as e:
+            # 2. 기본 검증에서 로그인 실패 시,
+            #    e.codes에 'no_activate_account'가 포함됨
+            if 'no_activate_account' in e.codes:
+                raise serializers.ValidationError('아이디와 비밀번호가 일치하지 않습니다.')
+
+            raise e
+
+        return data
+    # TODO:
+    # 로그인 실패 테스트 해봐야됨
