@@ -1,25 +1,42 @@
 # api/serializers.py
 
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainSerializer
 
-from .models import Profile
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+
+from .models import Profile, ProfileImage
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
 from django.core.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
-# 1. 프로필 관리용 시리얼라이저
+
+# 1. 이미지 전용 시리얼라이저
+class ProfileImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfileImage
+        fields = ['id', 'image']
+
+# 2. 프로필 관리용 시리얼라이저
 class ProfileSerializer(serializers.ModelSerializer):
     """
     [GET, POST] 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
     """
+    images = ProfileImageSerializer(many=True, read_only=True)
+
     class Meta:
         model = Profile
         # 'user' 필드를 제외한 Profile 모델의 모든 필드를 다룹니다
         fields = [
-            'nickname', 'year', 'month', 'day', 'hour', 'minute',
-            'gender', 'job', 'hobbies', 'mbti', 'profile_text'
+            'nickname',
+            'gender',
+            'year', 'month', 'day', 'hour', 'minute',
+            'birth_time_unknown',
+            'location_city', 'location_district',
+            'job', 'hobbies', 'mbti',
+            'profile_text',
+            'images'
         ]
 
 class ProfileTextUpdateSerializer(serializers.ModelSerializer):
@@ -65,14 +82,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'password', 'password_verify', 'phone_number')
 
-    # def validate_username(self, value):
-    #     """
-    #     ID(username) 중복 확인
-    #     """
-    #     if User.objects.filter(username=value).exists():
-    #         raise serializers.ValidationError("이미 등록된 아이디입니다.")
-    #     return value
-
     def validate_phone_number(self, value):
         if not value.isdigit():
             raise serializers.ValidationError("'-' 없이 11자리 숫자만 입력해 주세요.")
@@ -113,9 +122,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         return user
 
-class MyTokenObtainPairSerializer(TokenObtainSerializer):
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    SimpleJWT의 기본 로그인 시리얼라이즈 상속 -> 로그인 실패 예외 추가
+    SimpleJWT의 기본 로그인 시리얼라이즈 상속 -> 로그인 실패 메시지 한글화
     """
 
     def validate(self, attrs):
@@ -123,14 +132,12 @@ class MyTokenObtainPairSerializer(TokenObtainSerializer):
             # 1. SimpleJWT의 기본 로그인 검증 먼저 실행
             data = super().validate(attrs)
 
-        except serializers.ValidateionError as e:
+        except AuthenticationFailed as e:
             # 2. 기본 검증에서 로그인 실패 시,
             #    e.codes에 'no_activate_account'가 포함됨
-            if 'no_activate_account' in e.codes:
-                raise serializers.ValidationError('아이디와 비밀번호가 일치하지 않습니다.')
+            if hasattr(e, 'detail') and 'no_activate_account' in str(e.detail):
+                raise AuthenticationFailed('아이디와 비밀번호가 일치하지 않습니다.')
 
             raise e
 
         return data
-    # TODO:
-    # 로그인 실패 테스트 해봐야됨
