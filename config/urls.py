@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -12,9 +14,13 @@ urlpatterns = [
     # chat 앱의 urls.py를 포함
     path('chat/', include('chat.urls')),
 
-    # POST /api/token/ (Login)
+    # POST /api/token/ (로그인)
     path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
 
-    # POST /api/token/refresh/ (Token Refresh)
+    # POST /api/token/refresh/ (토큰 리프레시)
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
+
+# DEBUG 모드 시, 업로드 된 미디어 파일 서빙
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
