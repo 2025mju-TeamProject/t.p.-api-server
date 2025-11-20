@@ -45,3 +45,5 @@ class Block(models.Model):
 
     def __str__(self):
         return f'{self.blocker.username} blocked {self.blocked.username}'
+
+
