@@ -9,10 +9,10 @@ urlpatterns = [
     # 회원가입(POST) API
     path('register/', views.UserRegistrationView.as_view(), name='register'),
     # http://127.0.0.1:8000/api/report/ 주소로 요청이 오면 views.py의 generate_compatibility_report 함수를 실행
-    path('report/', views.generate_compatibility_report, name='generate_compatibility_report'),
-
-    # http://127.0.0.1:8000/api/conversation/ 주소로 요청이 오면 views.py의 generate_conversation_starter 함수를 실행
-    path('conversation/', views.generate_conversation_starter, name='generate_conversation_starter'),
+    # path('report/', views.generate_compatibility_report, name='generate_compatibility_report'),
+    #
+    # # http://127.0.0.1:8000/api/conversation/ 주소로 요청이 오면 views.py의 generate_conversation_starter 함수를 실행
+    # path('conversation/', views.generate_conversation_starter, name='generate_conversation_starter'),
 
     path('saju/', views.get_saju_api, name='get_saju_api'),
 ]
