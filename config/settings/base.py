@@ -31,7 +31,6 @@ SECRET_KEY = get_secret('SECRET_KEY')
 #API Keys
 OPENAI_API_KEY = get_secret('OPENAI_API_KEY')
 
-# TODO : key 받으면 get_secret 하기
 
 SAJU_API_KEY = "MY_SAJU_API_KEY"
 SAJU_API_URL = "https://api.saju.example.com/analysis"
@@ -48,6 +47,7 @@ INSTALLED_APPS = [
     'daphne',
     'chat',
     'api',
+    'profiles',
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
