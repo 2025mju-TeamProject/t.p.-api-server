@@ -11,8 +11,8 @@ from rest_framework.request import Request
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .saju_calculator import calculate_saju
-from .models import Profile, ProfileImage
-from .serializers import (
+from profiles.models import UserProfile, ProfileImage
+from profiles.serializers import (
     ProfileSerializer,
     ProfileTextUpdateSerializer,
     UserRegistrationSerializer,
