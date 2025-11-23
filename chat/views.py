@@ -1,19 +1,25 @@
 ﻿from django.http import Http404
+import json
+import openai
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.conf import settings
 
 # API 구현 위한 추가 모듈
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.permissions import IsAuthenticated
 
 # DB 설계를 위해 필요한 모델
 from .models import ChatRoom, Message, Block
 from .serializers import MessageSerializer
+from profiles.models import UserProfile
 
 User = get_user_model()
+openai.api_key = settings.OPENAI_API_KEY
 
 # 1. 채팅방 입장 뷰
 @login_required
@@ -62,7 +68,7 @@ class MessageHistoryView(APIView):
     URL 예 : /api/chat/message/2-5/
     """
     # IsAuthenticated: 로그인한 사용자만 이 API에 접근 가능함
-    permissions_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, room_name):
         """
@@ -112,7 +118,7 @@ class BlockUserView(APIView):
     """
     사용자를 차단하거나 차단 해제하는 API
     """
-    permissions_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id_to_block):
         """POST: user_id_to_block 사용자를 차단합니다."""
@@ -148,3 +154,101 @@ class BlockUserView(APIView):
             return Response({"message": f"{blocked.username}님을 차단 해제했습니다."}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "차단 기록이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ChatSuggestionView(APIView):
+    """
+    최근 10개 메시지를 참고해 3~4개 답변을 추천
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, room_name):
+        try:
+            room = ChatRoom.objects.get(name=room_name)
+        except ChatRoom.DoesNotExist:
+            return Response({"error": "채팅방이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        allowed_users = [int(uid) for uid in room.name.split("-")]
+        if request.user.id not in allowed_users:
+            return Response({"error": "이 채팅방에 접근할 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        messages = list(
+            Message.objects.filter(room=room)
+            .order_by("-timestamp")
+            .values("sender__username", "content")[:10][::-1]
+        )
+        convo_text = "\n".join([f"{m['sender__username']}: {m['content']}" for m in messages]) or "(대화 없음)"
+
+        system_prompt_lines = [
+            "너는 친근하고 예의있는 대화 코치야. 개인정보 요구나 공격적인 표현은 피한다.",
+            "사용자가 다음 메시지로 보낼 수 있는 자연스러운 답변을 3~4개 제안해줘.",
+            "각 제안은 한두 문장으로 짧게 해줘.",
+            "여기는 소개팅앱이고, 남녀가 서로 대화하는 상황이야.",
+            "너는 최대한 대화가 잘 이루어질 수 있도록 도와줘야 해."
+        ]
+        system_prompt = "\n".join(system_prompt_lines)
+        profile_lines = []
+
+        def summary_for(user_obj):
+            try:
+                p = user_obj.profile
+            except UserProfile.DoesNotExist:
+                return None
+            hobbies = ", ".join(p.hobbies) if p.hobbies else None
+            parts = []
+            if p.nickname:
+                parts.append(f"닉네임: {p.nickname}")
+            if p.gender:
+                parts.append(f"성별: {p.gender}")
+            if p.location_city or p.location_district:
+                parts.append(f"지역: {p.location_city or ''} {p.location_district or ''}".strip())
+            if p.job:
+                parts.append(f"직업: {p.job}")
+            if p.mbti:
+                parts.append(f"MBTI: {p.mbti}")
+            if hobbies:
+                parts.append(f"관심사: {hobbies}")
+            return "; ".join(parts) if parts else None
+
+        if len(messages) < 10:
+            other_id = [uid for uid in allowed_users if uid != request.user.id]
+            other_user = User.objects.filter(id=other_id[0]).first() if other_id else None
+            my_summary = summary_for(request.user)
+            other_summary = summary_for(other_user) if other_user else None
+            if my_summary or other_summary:
+                profile_lines.append("참고 프로필 정보:")
+                if my_summary:
+                    profile_lines.append(f"- 나: {my_summary}")
+                if other_summary:
+                    profile_lines.append(f"- 상대: {other_summary}")
+
+        profile_block = "\n".join(profile_lines)
+
+        user_prompt = (
+            "다음은 최근 채팅 내역이야.\n"
+            f"{convo_text}\n\n"
+            f"{profile_block}\n\n" if profile_block else f"다음은 최근 채팅 내역이야.\n{convo_text}\n\n"
+        ) + (
+            "다음 메시지로 보낼 수 있는 자연스러운 답변을 3개 제안해줘. "
+            'JSON 배열 형태로만 응답해: ["제안1", "제안2", "제안3"]. '
+            "각 제안은 짧게."
+        )
+
+        try:
+            completion = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=300,
+                temperature=0.8,
+            )
+            content = completion.choices[0].message.content
+            suggestions = json.loads(content)
+            if not isinstance(suggestions, list):
+                raise ValueError("Suggestions must be a list")
+        except Exception as e:
+            return Response({"error": f"추천 생성에 실패했습니다: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"suggestions": suggestions}, status=status.HTTP_200_OK)
