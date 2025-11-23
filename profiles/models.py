@@ -57,11 +57,6 @@ class UserProfile(models.Model):
     def __str__(self):
         return f'{self.user.username}의 프로필'
 
-    # def save(self, *args, **kwargs):
-    #     if self.mbti:
-    #         self.mbti = self.mbti.upper()
-    #     super().save(*args, **kwargs)
-
 class ProfileImage(models.Model):
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='profile_images/')
@@ -70,15 +65,14 @@ class ProfileImage(models.Model):
     def __str__(self):
         return f"{self.profile.user.username}의 사진 {self.id}"
 
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        # ✨ Profile -> UserProfile 로 변경
-        UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def save_user_profile(sender, instance, **kwargs):
-    try:
-        instance.profile.save() # related_name이 'profile'인 경우 유지
-    except UserProfile.DoesNotExist: # ✨ 변경
-        UserProfile.objects.create(user=instance)
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def create_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         UserProfile.objects.create(user=instance)
+#
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def save_user_profile(sender, instance, **kwargs):
+#     try:
+#         instance.profile.save() # related_name이 'profile'인 경우 유지
+#     except UserProfile.DoesNotExist: # ✨ 변경
+#         UserProfile.objects.create(user=instance)

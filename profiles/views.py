@@ -51,22 +51,17 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
 # 1. 프로필 관리 View (조회, AI 프로필 생성, 수동 수정)
 class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
-    """
-    로그인한 사용자의 프로필을 다루는 View
-    - GET: 내 프로필 정보 조회
-    - POST: 내 정보로 AI 프로필 생성
-    - PATCH: 사용자가 AI 프로필 텍스트 수정
-    """
+    """로그인한 사용자의 프로필을 다루는 View"""
+
     permission_classes = [permissions.IsAuthenticated] # 로그인 필수
 
     def get(self, request):
-        """
-        [GET] 내 프로필 조회
-        """
+        """[GET] 내 프로필 조회"""
         try:
             profile = request.user.profile
             serializer = ProfileSerializer(profile)
             return Response(serializer.data, status=status.HTTP_200_OK)
+
         except UserProfile.DoesNotExist:
             return Response(
                 {'error': '프로필이 존재하지 않습니다.'},
@@ -74,9 +69,7 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
             )
 
     def post(self, request):
-        """
-        [POST] 정보 입력 + 사진 업로드 -> AI 소개글 생성
-        """
+        """[POST] 정보 입력 + 사진 업로드 -> AI 소개글 생성"""
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         data = request.data
 
@@ -84,9 +77,15 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
             # 1. 텍스트 데이터 저장
             profile.nickname = data.get('nickname')
             profile.gender = data.get('gender')
-            profile.year = int(data.get('year'))
-            profile.month = int(data.get('month'))
-            profile.day = int(data.get('day'))
+            try:
+                profile.year = int(data.get('year'))
+                profile.month = int(data.get('month'))
+                profile.day = int(data.get('day'))
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "생년월일(year, month, day)은 필수이며 숫자여야 합니다."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # '시간 모름' 처리
             unknown_val = data.get('birth_time_unknown')
@@ -113,6 +112,7 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
             if hobbies_raw:
                 if isinstance(hobbies_raw, str):
                     try:
+                        hobbies_raw = hobbies_raw.replace('\x08', '').strip()
                         profile.hobbies = json.loads(hobbies_raw)
                     except json.JSONDecodeError:
                         # JSON 변환 실패 시, 그냥 문자열 하나를 리스트로 저장하거나 에러 처리
@@ -122,7 +122,10 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
 
             # 데이터 유효성 검사
             if profile.hobbies and len(profile.hobbies) < 3:
-                return Response({'error': '관심사는 최소 3개 이상 선택해야 합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'error': '관심사는 최소 3개 이상 선택해야 합니다.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # 이미지 파일 저장 (최대 6개)
             # React Native에서 이미지 보낼 시, 키 이름을 'images'로 통일해서 여러 개 보내야 됨
@@ -147,14 +150,9 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
                 )
             profile.save()
 
-        except (ValueError) as e:
+        except (ValueError, TypeError) as e:
             return Response(
-                {"error": "필수 정보가 누락됨."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        except (TypeError) as e:
-            return Response(
-                {"error": "데이터 형식이 올바르지 않습니다."},
+                {"error": "필수 정보가 누락되었거나 데이터 형식이 올바르지 않습니다."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -237,9 +235,9 @@ def get_saju_api(request: Request) -> Response:
     print(f"\n📢 [DEBUG] 수신된 데이터: {data}")
 
     try:
-        year = int(data['year'])
-        month = int(data['month'])
-        day = int(data['day'])
+        year = int(data.get('year'))
+        month = int(data.get('month'))
+        day = int(data.get('day'))
 
         # 1. '시간 모름' 로직 확인
         unknown_val = data.get('birth_time_unknown')
