@@ -27,6 +27,11 @@ class UserProfile(models.Model):
     # 2. GPT가 생성하고, 사용자가 수정할 필드
     profile_text = models.TextField(blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+    city = models.CharField(max_length=50, blank=True)  # 거주 도시 (시 단위)
+    district = models.CharField(max_length=50, blank=True)  # 거주 구/동 단위
+    photos = models.JSONField(default=list, blank=True)  # 프로필 사진 경로나 URL 리스트
+
+
 
     def __str__(self):
         return f'Profile of {self.user.username}'
