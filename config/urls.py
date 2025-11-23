@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from api.views import MyTokenObtainPairView
+from profiles.views import MyTokenObtainPairView
 
 urlpatterns = [
     path('admin/', admin.site.urls),

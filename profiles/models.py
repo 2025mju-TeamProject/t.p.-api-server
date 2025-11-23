@@ -57,10 +57,10 @@ class UserProfile(models.Model):
     def __str__(self):
         return f'{self.user.username}의 프로필'
 
-    def save(self, *args, **kwargs):
-        if self.mbti:
-            self.mbti = self.mbti.upper()
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if self.mbti:
+    #         self.mbti = self.mbti.upper()
+    #     super().save(*args, **kwargs)
 
 class ProfileImage(models.Model):
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='images')
