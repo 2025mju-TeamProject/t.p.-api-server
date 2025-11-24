@@ -48,6 +48,11 @@ class UserProfile(models.Model):
     profile_text = models.TextField(blank=True, null=True)
     # 9. 사용자가 수정할 필드
     updated_at = models.DateTimeField(auto_now=True)
+    city = models.CharField(max_length=50, blank=True)  # 거주 도시 (시 단위)
+    district = models.CharField(max_length=50, blank=True)  # 거주 구/동 단위
+    photos = models.JSONField(default=list, blank=True)  # 프로필 사진 경로나 URL 리스트
+
+
 
     # 회원가입에 사용할 휴대폰 번호
     phone_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
@@ -57,11 +62,6 @@ class UserProfile(models.Model):
     def __str__(self):
         return f'{self.user.username}의 프로필'
 
-    def save(self, *args, **kwargs):
-        if self.mbti:
-            self.mbti = self.mbti.upper()
-        super().save(*args, **kwargs)
-
 class ProfileImage(models.Model):
     profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='profile_images/')
@@ -70,15 +70,14 @@ class ProfileImage(models.Model):
     def __str__(self):
         return f"{self.profile.user.username}의 사진 {self.id}"
 
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        # ✨ Profile -> UserProfile 로 변경
-        UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def save_user_profile(sender, instance, **kwargs):
-    try:
-        instance.profile.save() # related_name이 'profile'인 경우 유지
-    except UserProfile.DoesNotExist: # ✨ 변경
-        UserProfile.objects.create(user=instance)
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def create_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         UserProfile.objects.create(user=instance)
+#
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def save_user_profile(sender, instance, **kwargs):
+#     try:
+#         instance.profile.save() # related_name이 'profile'인 경우 유지
+#     except UserProfile.DoesNotExist: # ✨ 변경
+#         UserProfile.objects.create(user=instance)

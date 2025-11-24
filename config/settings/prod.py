@@ -1,0 +1,1 @@
+# config/settings/prod.py (배포용 설정)

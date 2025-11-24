@@ -86,6 +86,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if len(value) != 11:
             raise serializers.ValidationError("휴대폰 번호는 11자리여야 합니다.")
 
+        if UserProfile.objects.filter(phone_number=value).exists():
+            raise serializers.ValidationError("이미 가입된 휴대폰 번호입니다.")
+
         return value
 
     def validate(self, data):

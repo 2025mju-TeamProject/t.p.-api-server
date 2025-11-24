@@ -135,7 +135,7 @@ class BlockUserView(APIView):
         block, created = Block.objects.get_or_create(blocker=blocker, blocked= blocked)
 
         if created:
-            return Response({"message": f"{blocked.username}님을 차단했습니다."}, status=status.HTTP_21_CREATED)
+            return Response({"message": f"{blocked.username}님을 차단했습니다."}, status=status.HTTP_201_CREATED)
         else:
             return Response({"message": "이미 차단한 사용자입니다."}, status=status.HTTP_200_OK)
 
