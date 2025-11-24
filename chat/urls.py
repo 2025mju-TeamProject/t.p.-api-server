@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/block/<int:user_id_to_block>/', views.BlockUserView.as_view(), name='block-user-api'),
     path('api/suggestions/<str:room_name>/', views.ChatSuggestionView.as_view(), name='chat-suggestions-api'),
     #post 메소드, 추천용 메소드
+    path('api/rooms/', views.ChatRoomListView.as_view(), name='chat-room-list-api'),
 ]

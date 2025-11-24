@@ -51,6 +51,15 @@ def chat_room(request, other_user_id):
 
 
     room_name = "-".join(sorted([str(my_id), str(other_user_id)]))
+    room, _ = ChatRoom.objects.get_or_create(name=room_name)
+    prev_messages = [
+        {
+            'sender': m.sender.username,
+            'content': m.content,
+            'timestamp': m.timestamp.isoformat()
+        }
+        for m in room.messages.order_by('timestamp')
+    ]
 
     return render(
         request,
@@ -58,6 +67,7 @@ def chat_room(request, other_user_id):
         {
             "other_user_id": other_user_id,
             "room_name": room_name,
+            "prev_messages": prev_messages,
         },
     )
 
@@ -253,3 +263,26 @@ class ChatSuggestionView(APIView):
             return Response({"error": f"추천 생성에 실패했습니다: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"suggestions": suggestions}, status=status.HTTP_200_OK)
+
+
+class ChatRoomListView(APIView):
+    """
+    내 토큰으로 내가 속한 채팅방 목록을 조회
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.user.id
+        rooms = []
+        qs = ChatRoom.objects.filter(name__contains=str(user_id)).values_list("name", flat=True)
+        for name in qs:
+            try:
+                ids = [int(x) for x in name.split("-")]
+            except ValueError:
+                continue
+            if user_id not in ids:
+                continue
+            other_ids = [i for i in ids if i != user_id]
+            other_id = other_ids[0] if other_ids else user_id
+            rooms.append({"room_name": name, "other_user_id": other_id})
+        return Response({"rooms": rooms}, status=status.HTTP_200_OK)

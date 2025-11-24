@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from rest_framework_simplejwt.views import TokenRefreshView
+from django.contrib.auth import views as auth_views
 
 from profiles.views import MyTokenObtainPairView
 
@@ -13,6 +14,10 @@ urlpatterns = [
     path('api/', include('api.urls')),
     # chat 앱의 urls.py를 포함
     path('chat/', include('chat.urls')),
+
+    # 세션 로그인/로그아웃
+    path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/'), name='logout'),
 
     # POST /api/token/ (로그인)
     path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),

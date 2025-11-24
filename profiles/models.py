@@ -36,7 +36,6 @@ class UserProfile(models.Model):
 
     # 5. 직업 (선택)
     job = models.CharField(max_length=50, blank=True, null=True)
-
     # 6. 지역 (선택)
     # 시/도
     location_city = models.CharField(max_length=50, blank=True, null=True)
@@ -48,8 +47,6 @@ class UserProfile(models.Model):
     profile_text = models.TextField(blank=True, null=True)
     # 9. 사용자가 수정할 필드
     updated_at = models.DateTimeField(auto_now=True)
-    #city = models.CharField(max_length=50, blank=True)  # 거주 도시 (시 단위)
-    #district = models.CharField(max_length=50, blank=True)  # 거주 구/동 단위
     photos = models.JSONField(default=list, blank=True)  # 프로필 사진 경로나 URL 리스트
 
 
