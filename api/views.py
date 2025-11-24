@@ -23,19 +23,6 @@ def generate_compatibility_report(request: Request) -> Response:
 pass # 아직 기능이 구현되지 않았으므로 비워둡니다.
 
 
-# 3. AI 기반 대화 어시스턴트 기능 (향후 개발 예정)
-@api_view(['POST'])
-def generate_conversation_starter(request: Request) -> Response:
-    """
-    두 사용자의 정보를 바탕으로 대화를 시작할 질문을 생성합니다. (구현 예정)
-    """
-# TODO: 아래 로직을 실제로 구현해야 합니다.
-# 1. 두 사용자의 정보(user1, user2)를 request.data에서 가져옵니다.
-# 2. 두 사용자의 취미, MBTI, (선택적으로) 사주 정보를 조합하여 AI 프롬프트를 구성합니다.
-# 3. OpenAI API를 호출하여 질문을 생성하고 반환합니다.
-pass # 아직 기능이 구현되지 않았으므로 비워둡니다.
-
-
 # 4. 사주 정보 조회 API (독립적인 유틸리티 함수)
 # @api_view(['POST'])
 # def get_saju_api(request: Request) -> Response:

@@ -14,17 +14,19 @@ class ProfileImageSerializer(serializers.ModelSerializer):
         model = ProfileImage
         fields = ['id', 'image']
 
-# 2. 프로필 관리용 시리얼라이저
+# 2. ??? 관리용 시리얼라이저
 class ProfileSerializer(serializers.ModelSerializer):
     """
-    [GET, POST] 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
+    [GET, POST] ??? 전체를 조회하거나 생성(AI 생성)할 때 사용함
     """
     images = ProfileImageSerializer(many=True, read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
 
     class Meta:
         model = UserProfile
         # 'user' 필드를 제외한 Profile 모델의 모든 필드를 다룹니다
         fields = [
+            'user_id',
             'nickname',
             'gender',
             'year', 'month', 'day', 'hour', 'minute',

@@ -170,3 +170,6 @@ local.json
 .venv/
 
 db.sqlite3
+
+# 프로필 사진 이그노아
+media/
