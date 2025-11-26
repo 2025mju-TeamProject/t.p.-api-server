@@ -1,4 +1,4 @@
-# api/urls.py (새로 만드는 파일)
+# api/urls.py
 
 from django.urls import path
 from . import views  # 현재 폴더(api)에 있는 views.py를 불러오기
