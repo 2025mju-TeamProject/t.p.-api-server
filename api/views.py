@@ -1,13 +1,74 @@
+# api/views.py
+
 import openai
 import json
 from django.conf import settings
+from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.request import Request
 
+from .saju_compatibility import calculate_compatibility_score
+
+User = get_user_model()
+
+# settings.py에서 API 키 불러옴
+openai.api_key = settings.OPENAI_API_KEY
+
+# 1. 사주 궁합 점수 조회 API
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def check_saju_compatibility(request, target_id):
+    """
+    [GET] ('api/match/score/<target_id>/'
+    나와 상대방의 사주 궁합 점수 반환
+    """
+    try:
+        # 1. 내 프로필 가져오기
+        try:
+            me = request.user.profile
+        except AttributeError:
+            return Response(
+                {"error": "내 프로필이 존재하지 않습니다"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 2. 상대방 프로필 가져오기
+        target_user = get_object_or_404(User, id=target_id)
+        try:
+            target = target_user.profile
+        except AttributeError:
+            return Response(
+                {"error": "상대방의 프로필이 존재하지 않습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 3. 본인과의 궁합 조회 예외 처리
+        if request.user.id == target_id:
+            return Response(
+                {"error": "자신과의 궁합은 볼 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 4. 궁합 점수 계산
+        score = calculate_compatibility_score(me, target)
+
+        return Response({
+            "my_nickname": me.nickname,
+            "partner_nickname": target.nickname,
+            "compatibility_score": score,
+            "message": "사주 궁합 분석이 완료되었습니다."
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"궁합 분석 중 오류 발생: {e}")
+        return Response(
+            {"error": "분석 중 오류 발생했습니다."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 # 2. AI 기반 궁합/취향 분석 리포트 제공 기능 (향후 개발 예정)
 @api_view(['POST'])
 def generate_compatibility_report(request: Request) -> Response:
