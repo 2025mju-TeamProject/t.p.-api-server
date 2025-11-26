@@ -15,4 +15,5 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('saju/', get_saju_api, name='get_saju_api'),
     path('match/score/<int:target_id>', views.check_saju_compatibility, name='check_saju'),
+    path('match/recommend/', views.get_recommend_matches, name='recommend_matches'),
 ]
