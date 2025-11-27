@@ -6,6 +6,7 @@ import openai
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
@@ -41,7 +42,10 @@ class UserRegistrationView(APIView):
                 {"message": "회원가입이 정상적으로 완료되었습니다."},
                 status=status.HTTP_201_CREATED,
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -161,7 +165,10 @@ class ProfileView(APIView):
             profile.year, profile.month, profile.day, calc_hour, calc_minute
         )
         if "error" in saju_data:
-            return Response(saju_data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                saju_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         my_saju_pillar = saju_data.get("day_pillar")
 
@@ -192,7 +199,7 @@ class ProfileView(APIView):
 
         try:
             response = openai.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are a dating profile expert"},
                     {"role": "user", "content": prompt},
@@ -231,8 +238,14 @@ class ProfileView(APIView):
         )
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class UserProfileDetailView(APIView):
@@ -245,7 +258,10 @@ class UserProfileDetailView(APIView):
     def get(self, request, user_id):
         profile = get_object_or_404(UserProfile, user__id=user_id)
         serializer = ProfileSerializer(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
 
 
 @api_view(["POST"])
@@ -282,9 +298,15 @@ def get_saju_api(request: Request) -> Response:
     saju_data = calculate_saju(year, month, day, hour, minute)
 
     if "error" in saju_data:
-        return Response(saju_data, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            saju_data,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    return Response(saju_data, status=status.HTTP_200_OK)
+    return Response(
+        saju_data,
+        status=status.HTTP_200_OK
+    )
 
 
 class MatchSummaryView(APIView):
@@ -432,4 +454,7 @@ class MatchSummaryView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response({"summary": content}, status=status.HTTP_200_OK)
+        return Response(
+            {"summary": content},
+            status=status.HTTP_200_OK
+        )

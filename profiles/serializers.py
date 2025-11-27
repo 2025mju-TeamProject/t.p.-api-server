@@ -18,7 +18,7 @@ class ProfileImageSerializer(serializers.ModelSerializer):
 # 2. ??? 관리용 시리얼라이저
 class ProfileSerializer(serializers.ModelSerializer):
     """
-    [GET, POST] ??? 전체를 조회하거나 생성(AI 생성)할 때 사용함
+    [GET, POST] 사용자 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
     """
     images = ProfileImageSerializer(many=True, read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
@@ -65,7 +65,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True
     )
-    phone_number = serializers.CharField(write_only=True, required=True, max_length=20)
+    phone_number = serializers.CharField(
+        write_only=True,
+        required=True,
+        max_length=20
+    )
 
     username = serializers.CharField(
         required=True,
@@ -115,13 +119,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             username = validated_data['username'],
             password = validated_data['password']
         )
-
-        try:
-            profile = user.profile
-            profile.phone_number = phone_number
-            profile.save()
-        except UserProfile.DoesNotExist:
-            UserProfile.objects.create(user=user, phone_number=phone_number)
+        UserProfile.objects.create(user=user, phone_number=phone_number)
 
         return user
 
@@ -129,12 +127,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     SimpleJWT의 기본 로그인 시리얼라이즈 상속 -> 로그인 실패 메시지 한글화
     """
-
     def validate(self, attrs):
         try:
             # 1. SimpleJWT의 기본 로그인 검증 먼저 실행
             data = super().validate(attrs)
-
         except AuthenticationFailed as e:
             # 2. 기본 검증에서 로그인 실패 시,
             #    e.codes에 'no_activate_account'가 포함됨

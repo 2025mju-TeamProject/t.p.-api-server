@@ -8,4 +8,5 @@ class ProfilesConfig(AppConfig):
 
     # 시그널(자동 프로필 생성)을 쓴다면 아래 코드가 필요할 수 있습니다.
     def ready(self):
-        import profiles.signals
+        # import profiles.signals
+        pass

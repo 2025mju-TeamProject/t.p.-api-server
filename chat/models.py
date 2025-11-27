@@ -1,11 +1,7 @@
 # chat/models.py
-from django.db import models
-
-# Create your models here.
 
 from django.db import models
 from django.conf import settings
-from django.db.models import Q
 
 class ChatRoom(models.Model):
     # 'some_room_name' 같은 채팅방의 고유 이름
@@ -46,5 +42,3 @@ class Block(models.Model):
 
     def __str__(self):
         return f'{self.blocker.username} blocked {self.blocked.username}'
-
-
