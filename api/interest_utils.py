@@ -1,6 +1,8 @@
 # api/interest_utils.py
 
-# 1. 취미 키워드 -> 대분류 매핑 데이터
+import numpy as np
+
+# 취미 키워드 → 카테고리 매핑
 KEYWORD_TO_CATEGORY = {
     # 1. 운동 및 피트니스
     "골프": "운동", "농구": "운동", "러닝": "운동", "서핑": "운동",
@@ -28,48 +30,85 @@ KEYWORD_TO_CATEGORY = {
     "패션": "생활", "SNS": "생활"
 }
 
+# 고정 vocabulary와 인덱스 매핑
+_KEYWORDS = sorted(KEYWORD_TO_CATEGORY.keys())
+_CATEGORIES = sorted(set(KEYWORD_TO_CATEGORY.values()))
+_KEYWORD_TO_IDX = {k: i for i, k in enumerate(_KEYWORDS)}
+_CATEGORY_TO_IDX = {c: i for i, c in enumerate(_CATEGORIES)}
+
+
+def _vectorize(hobbies):
+    """취미 리스트를 키워드/카테고리 벡터로 변환"""
+    kw_vec = np.zeros(len(_KEYWORDS), dtype=float)
+    cat_vec = np.zeros(len(_CATEGORIES), dtype=float)
+
+    for h in hobbies:
+        if h in _KEYWORD_TO_IDX:
+            kw_vec[_KEYWORD_TO_IDX[h]] = 1.0
+        cat = KEYWORD_TO_CATEGORY.get(h)
+        if cat and cat in _CATEGORY_TO_IDX:
+            cat_vec[_CATEGORY_TO_IDX[cat]] = 1.0
+    return kw_vec, cat_vec
+
+
+def _cosine(a, b):
+    denom = float(np.linalg.norm(a) * np.linalg.norm(b))
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a, b) / denom)
+
+
 def get_interest_score(hobbies_a, hobbies_b):
     """
-    두 사용자의 취미 리스트(JSON list)를 입력받아
-    취향 유사도 점수(0~100점)를 반환함
+    취미 리스트(JSON list) 간 코사인 유사도 기반 점수(0~100) 반환
 
-    [알고리즘]
-    1. 정확히 일치하는 키워드 1개당: +10점
-    2. 키워드는 달라도 대분류(카테고리)가 같으면: +3점 (카테고리 중복 합산 X)
-    3. 최대 점수를 넘지 않도록 100점 만점으로 환산
+    - 키워드 벡터와 카테고리 벡터를 이어붙이고, 취미 파트 가중치 2, 카테고리 파트 가중치 1 적용
+    - 입력이 없거나 벡터 노름이 0이면 0점
     """
-
-    # 입력값이 없거나 리스트가 아니면 0점 (방어 코드)
     if not hobbies_a or not hobbies_b:
         return 0
     if not isinstance(hobbies_a, list) or not isinstance(hobbies_b, list):
         return 0
 
-    set_a = set(hobbies_a)
-    set_b = set(hobbies_b)
+    kw_a, cat_a = _vectorize(hobbies_a)
+    kw_b, cat_b = _vectorize(hobbies_b)
 
-    # 1. 키워드 정확 일치 개수 계산
-    exact_matches = set_a.intersection(set_b)
-    exact_count = len(exact_matches)
+    # 가중치 적용
+    kw_a *= 2.0
+    kw_b *= 2.0
 
-    # 2. 대분류(카테고리) 일치 여부 계싼
-    # 각 사용자의 취미가 어떤 카테고리들에 속하는지 추출
-    categories_a = {KEYWORD_TO_CATEGORY.get(h) for h in set_a if KEYWORD_TO_CATEGORY.get(h)}
-    categories_b = {KEYWORD_TO_CATEGORY.get(h) for h in set_b if KEYWORD_TO_CATEGORY.get(h)}
+    vec_a = np.concatenate([kw_a, cat_a])
+    vec_b = np.concatenate([kw_b, cat_b])
 
-    common_categories = categories_a.intersection(categories_b)
-    category_count = len(common_categories)
+    score = _cosine(vec_a, vec_b) * 100.0
+    return int(round(score))
 
-    # 3. 원시 점수 계산
-    # 예: 키워드 2개 일치(20점) + 운동 카테고리 겹침(3점) = 23점
-    raw_score = (exact_count * 10) + (category_count * 3)
 
-    # 4. 100점 만점으로 스케일링 (Normalization)
-    # 기준: 취미 5개를 선택했을 때, 3개가 똑같고 카테고리도 3개 겹치면 -> 30 + 9 = 39점
-    # 3~4개만 맞아도 거의 운명의 상대로 보므로, 40점 정도로 만점 기준으로 잡고 환산합니다.
+def get_interest_debug(hobbies_a, hobbies_b):
+    """
+    디버깅용: 두 취미 리스트의 벡터와 코사인 유사도를 모두 반환
+    """
+    kw_a, cat_a = _vectorize(hobbies_a or [])
+    kw_b, cat_b = _vectorize(hobbies_b or [])
 
-    BASELINE_MAX = 40.0
-    final_score = int((raw_score / BASELINE_MAX) * 100)
+    kw_a_w = kw_a * 2.0
+    kw_b_w = kw_b * 2.0
+    vec_a = np.concatenate([kw_a_w, cat_a])
+    vec_b = np.concatenate([kw_b_w, cat_b])
 
-    # 100점 초과하면 100점으로 제한
-    return max(0, min(100, final_score))
+    cosine = _cosine(vec_a, vec_b)
+
+    return {
+        "keywords": _KEYWORDS,
+        "categories": _CATEGORIES,
+        "user_a": {
+            "keyword_vector": kw_a.tolist(),
+            "category_vector": cat_a.tolist(),
+        },
+        "user_b": {
+            "keyword_vector": kw_b.tolist(),
+            "category_vector": cat_b.tolist(),
+        },
+        "weighted_cosine": cosine,
+        "score_0_100": int(round(cosine * 100.0)),
+    }
