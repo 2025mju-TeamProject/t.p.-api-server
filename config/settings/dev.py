@@ -1,3 +1,4 @@
+# config/settings/dev.py
 # TeamProject/TeamProject/settings/dev.py
 
 # 1. base.py의 모든 설정을 가져옵니다.

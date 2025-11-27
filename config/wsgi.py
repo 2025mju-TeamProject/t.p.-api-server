@@ -1,3 +1,4 @@
+# config/wsgi.py
 # TeamProject/TeamProject/wsgi.py (최종본)
 
 import os

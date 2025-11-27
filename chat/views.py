@@ -1,4 +1,5 @@
-﻿from django.http import Http404
+# chat/views.py
+from django.http import Http404
 import json
 import openai
 from django.shortcuts import render, get_object_or_404
