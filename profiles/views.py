@@ -9,6 +9,7 @@ from rest_framework import status, permissions
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
+from django.shortcuts import get_object_or_404
 
 from .models import UserProfile, ProfileImage
 from profiles.serializers import (
@@ -225,7 +226,19 @@ class ProfileView(APIView): # (조회, AI 생성, 수동 수정)
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# 4. 사주 정보 조회 API (독립적인 유틸리티 함수)
+
+
+class UserProfileDetailView(APIView):
+    """
+    Fetch another user's profile by user_id
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, user_id):
+        profile = get_object_or_404(UserProfile, user__id=user_id)
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 @api_view(['POST'])
 def get_saju_api(request: Request) -> Response:
     """

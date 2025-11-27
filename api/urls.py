@@ -6,12 +6,14 @@ from profiles.views import (
     UserRegistrationView,
     MyTokenObtainPairView,
     ProfileView,
-    get_saju_api
+    get_saju_api,
+    UserProfileDetailView
 )
 
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('users/<int:user_id>/profile/', UserProfileDetailView.as_view(), name='user-profile-detail'),
     path('saju/', get_saju_api, name='get_saju_api'),
 ]
