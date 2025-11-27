@@ -24,6 +24,7 @@
 
     {{ room_name|json_script:"room-name" }}
     {{ other_user_id|json_script:"other-user-id" }}
+    {{ prev_messages|json_script:"initial-messages" }}
 
     <script>
         // --- (기존 변수들) ---
@@ -36,6 +37,12 @@
         const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
         // --- (기존 WebSocket 로직) ---
+
+        const initialMessages = JSON.parse(document.getElementById('initial-messages').textContent || '[]');
+        initialMessages.forEach(m => {
+            chatLog.innerHTML += '<div><b>' + m.sender + '</b>: ' + m.content + '</div>';
+        });
+        chatLog.scrollTop = chatLog.scrollHeight;
         const chatSocket = new WebSocket(
             (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
             window.location.host +

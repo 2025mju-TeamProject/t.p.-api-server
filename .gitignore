@@ -170,9 +170,3 @@ local.json
 .venv/
 
 db.sqlite3
-
-# IDE files (IntelliJ / PyCharm)
-.idea/
-.idea/dataSources/
-.idea/dataSources.xml
-.idea/data_source_mapping.xml
