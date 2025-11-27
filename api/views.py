@@ -1,3 +1,4 @@
+# api/views.py
 import openai
 import json
 from django.conf import settings

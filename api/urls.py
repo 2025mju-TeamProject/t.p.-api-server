@@ -1,3 +1,4 @@
+# api/urls.py
 # api/urls.py (새로 만드는 파일)
 
 from django.urls import path
@@ -7,7 +8,8 @@ from profiles.views import (
     MyTokenObtainPairView,
     ProfileView,
     get_saju_api,
-    UserProfileDetailView
+    UserProfileDetailView,
+    MatchSummaryView,
 )
 
 urlpatterns = [
@@ -16,4 +18,5 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('users/<int:user_id>/profile/', UserProfileDetailView.as_view(), name='user-profile-detail'),
     path('saju/', get_saju_api, name='get_saju_api'),
+    path('match-summary/<int:other_user_id>/', MatchSummaryView.as_view(), name='match-summary'),
 ]
