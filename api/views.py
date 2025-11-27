@@ -1,7 +1,6 @@
 # api/views.py
-import openai
+
 import json
-from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 
@@ -12,15 +11,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.request import Request
 
 from profiles.models import UserProfile
-
 from .saju_compatibility import calculate_compatibility_score
 from .geo_utils import get_lat_lon, calculate_distance, get_distance_score
 from .interest_utils import get_interest_score
 
 User = get_user_model()
 
-# settings.py에서 API 키 불러옴
-openai.api_key = settings.OPENAI_API_KEY
 
 # 1. 사주 궁합 점수 조회 API
 @api_view(['GET'])
@@ -31,7 +27,7 @@ def check_saju_compatibility(request, target_id):
     나와 상대방의 사주 궁합 점수 반환
     """
     try:
-        # 1. 내 프로필 가져오기
+        # 1. 내 프로필 조회
         try:
             me = request.user.profile
         except AttributeError:
@@ -40,7 +36,7 @@ def check_saju_compatibility(request, target_id):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # 2. 상대방 프로필 가져오기
+        # 2. 상대방 프로필 조회
         target_user = get_object_or_404(User, id=target_id)
         try:
             target = target_user.profile
@@ -67,7 +63,7 @@ def check_saju_compatibility(request, target_id):
             "message": "사주 궁합 분석이 완료되었습니다."
         }, status=status.HTTP_200_OK)
     except Exception as e:
-        print(f"궁합 분석 중 오류 발생: {e}")
+        print(f"[Error] 궁합 분석 중 오류 발생: {e}")
         return Response(
             {"error": "분석 중 오류 발생했습니다."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -79,16 +75,22 @@ def check_saju_compatibility(request, target_id):
 def get_recommend_matches(request):
     """
     [GET] /api/match/recommend/
-    나와 **이성(Opposite Gender)**인 유저 중
-    가중치 점수(사주+취향+거리)가 가장 높은 상위 10명을 반환합니다.
+    나와 이성인 유저 중
+    가중치 점수(사주+취향+거리)가 가장 높은 상위 10명을 반환
     """
     try:
         me = request.user.profile
         # 성별 정보 확인
         if not me.gender:
-            return Response({"error": "내 성별 정보가 설정되지 않았습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "내 성별 정보가 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     except AttributeError:
-        return Response({"error": "내 프로필 정보를 먼저 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "내 프로필 정보를 먼저 입력해주세요."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     # 1. 이성 필터링 (남 -> 여 / 여 -> 남)
     target_gender = '여성' if me.gender == '남성' else '남성'
@@ -101,13 +103,13 @@ def get_recommend_matches(request):
     # 3. 점수 계산 Loop
     for target in candidates:
         try:
-            # --- A. 사주 점수 (40%) ---
+            # 사주 점수 (0.4)
             saju_score = calculate_compatibility_score(me, target)
 
-            # --- B. 취향 점수 (50%) ---
+            # 취향 점수 (0.5)
             interest_score = get_interest_score(me.hobbies, target.hobbies)
 
-            # --- C. 거리 점수 (10%) ---
+            # 거리 점수 (0.1)
             my_loc = get_lat_lon(me.location_city, me.location_district)
             target_loc = get_lat_lon(target.location_city, target.location_district)
 
@@ -121,7 +123,7 @@ def get_recommend_matches(request):
             # 100점 만점 기준으로 환산 (10점 -> 100점)
             geo_score_100 = geo_raw_score * 10
 
-            # --- D. 총점 계산 ---
+            # 총점 계산
             # 사주(0.4) + 취향(0.5) + 거리(0.1)
             total_score = (saju_score * 0.4) + (interest_score * 0.5) + (geo_score_100 * 0.1)
 
@@ -147,7 +149,7 @@ def get_recommend_matches(request):
 
         except Exception as e:
             # 특정 유저 계산 중 에러가 나도 멈추지 않고 건너뜀 (서버 안정성)
-            print(f"User {target.user.id} 매칭 계산 중 에러: {e}")
+            print(f"[Error] 사용자 {target.user.id} 매칭 계산 중 에러: {e}")
             continue
 
     # 4. 정렬 및 상위 10명 추출

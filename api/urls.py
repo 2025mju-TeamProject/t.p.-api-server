@@ -10,6 +10,7 @@ from profiles.views import (
     UserProfileDetailView,
     MatchSummaryView,
 )
+
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
     path('login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),

@@ -1,11 +1,7 @@
 # profiles/models.py
-from django.conf import settings
-from django.core.validators import RegexValidator
-from django.db import models
-from django.db.models.signals import post_save
-from django.conf import settings
-from django.dispatch import receiver
 
+from django.db import models
+from django.conf import settings
 
 class UserProfile(models.Model):
     """소개팅 서비스 전용 사용자 프로필"""
@@ -14,7 +10,6 @@ class UserProfile(models.Model):
         settings.AUTH_USER_MODEL,
         related_name='profile',
         on_delete=models.CASCADE,
-        # primary_key=True,  # 사용자 PK를 그대로 프로필 PK로 사용
     )
 
     # 1. 성별 선택
@@ -67,15 +62,3 @@ class ProfileImage(models.Model):
 
     def __str__(self):
         return f"{self.profile.user.username}의 사진 {self.id}"
-
-# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-# def create_user_profile(sender, instance, created, **kwargs):
-#     if created:
-#         UserProfile.objects.create(user=instance)
-#
-# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-# def save_user_profile(sender, instance, **kwargs):
-#     try:
-#         instance.profile.save() # related_name이 'profile'인 경우 유지
-#     except UserProfile.DoesNotExist: # ✨ 변경
-#         UserProfile.objects.create(user=instance)

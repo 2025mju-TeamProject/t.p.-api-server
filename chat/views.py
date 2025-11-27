@@ -1,7 +1,8 @@
 # chat/views.py
-from django.http import Http404
+
 import json
 import openai
+from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -10,9 +11,9 @@ from django.conf import settings
 
 # API 구현 위한 추가 모듈
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.permissions import IsAuthenticated
 
 # DB 설계를 위해 필요한 모델
 from .models import ChatRoom, Message, Block
@@ -53,6 +54,8 @@ def chat_room(request, other_user_id):
 
     room_name = "-".join(sorted([str(my_id), str(other_user_id)]))
     room, _ = ChatRoom.objects.get_or_create(name=room_name)
+
+    # 이전 대화 내용 가져오기
     prev_messages = [
         {
             'sender': m.sender.username,
@@ -97,9 +100,15 @@ class MessageHistoryView(APIView):
             ).exists()
 
             if is_blocked:
-                return Response({"error": "차단된 사용자와의 내역을 볼 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": "차단된 사용자와의 내역을 볼 수 없습니다."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         except Exception:
-            return Response({"error": "채팅방 또는 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "채팅방 또는 사용자를 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         try:
             # 1. URL로 받은 room_name을 이용해 채팅방 찾음(ChatRoom 모델은 consumers.py에서 get_or_create_room으로 생성함)
@@ -108,7 +117,10 @@ class MessageHistoryView(APIView):
             # 2. 이 API를 요청한 사용자가 해당 채팅방의 참여자 맞는지 판단(room_name은 "ID1-ID2" 형식으로 파싱)
             allowed_users = [int(uid) for uid in room.name.split('-')]
             if request.user.id not in allowed_users:
-                return Response({"error": "이 채팅방에 접근할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": "이 채팅방에 접근할 권한이 없습니다."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             # 3. 해당 채팅방의 모든 메시지를 가져옴
             messages = room.messages.all()
@@ -122,33 +134,49 @@ class MessageHistoryView(APIView):
             # 아직 대화가 시작 안 돼서 ChatRoom 없는 경우
             return Response([], status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({"error": f"메시지를 불러오는 중 오류 발생: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"메시지를 불러오는 중 오류 발생: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 # 3. REST API: 사용자 차단/해제
 class BlockUserView(APIView):
     """
     사용자를 차단하거나 차단 해제하는 API
+    - POST: 차단
+    - DELETE: 차단 해제
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id_to_block):
-        """POST: user_id_to_block 사용자를 차단합니다."""
         blocker = request.user
         try:
             blocked = User.objects.get(id=user_id_to_block)
         except User.DoesNotExist:
-            return Response({"error": "차단할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "차단할 사용자를 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         if blocker == blocked:
-            return Response({"error": "스스로를 차단할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "스스로를 차단할 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # 이미 차단했는지 확인하고 없으면 생성
         block, created = Block.objects.get_or_create(blocker=blocker, blocked= blocked)
 
         if created:
-            return Response({"message": f"{blocked.username}님을 차단했습니다."}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": f"{blocked.username}님을 차단했습니다."},
+                status=status.HTTP_201_CREATED
+            )
         else:
-            return Response({"message": "이미 차단한 사용자입니다."}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "이미 차단한 사용자입니다."},
+                status=status.HTTP_200_OK
+            )
 
     def delete(self, request, user_id_to_block):
         """DELETE: user_id_to_block 사용자의 차단을 해제합니다."""
@@ -156,15 +184,24 @@ class BlockUserView(APIView):
         try:
             blocked = User.objects.get(id=user_id_to_block)
         except User.DoesNotExist:
-            return Response({"error": "차단 해제할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "차단 해제할 사용자를 찾을 수 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         # 차단 기록을 찾아서 삭제
         deleted_count, _ = Block.objects.filter(blocker=blocker, blocked=blocked).delete()
 
         if deleted_count > 0:
-            return Response({"message": f"{blocked.username}님을 차단 해제했습니다."}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": f"{blocked.username}님을 차단 해제했습니다."},
+                status=status.HTTP_200_OK
+            )
         else:
-            return Response({"error": "차단 기록이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "차단 기록이 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class ChatSuggestionView(APIView):
@@ -177,11 +214,17 @@ class ChatSuggestionView(APIView):
         try:
             room = ChatRoom.objects.get(name=room_name)
         except ChatRoom.DoesNotExist:
-            return Response({"error": "채팅방이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "채팅방이 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         allowed_users = [int(uid) for uid in room.name.split("-")]
         if request.user.id not in allowed_users:
-            return Response({"error": "이 채팅방에 접근할 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"error": "이 채팅방에 접근할 수 없습니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         messages = list(
             Message.objects.filter(room=room)
@@ -261,9 +304,15 @@ class ChatSuggestionView(APIView):
             if not isinstance(suggestions, list):
                 raise ValueError("Suggestions must be a list")
         except Exception as e:
-            return Response({"error": f"추천 생성에 실패했습니다: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"추천 생성에 실패했습니다: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        return Response({"suggestions": suggestions}, status=status.HTTP_200_OK)
+        return Response(
+            {"suggestions": suggestions},
+            status=status.HTTP_200_OK
+        )
 
 
 class ChatRoomListView(APIView):
@@ -273,17 +322,47 @@ class ChatRoomListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user_id = request.user.id
-        rooms = []
-        qs = ChatRoom.objects.filter(name__contains=str(user_id)).values_list("name", flat=True)
-        for name in qs:
-            try:
-                ids = [int(x) for x in name.split("-")]
-            except ValueError:
-                continue
-            if user_id not in ids:
-                continue
-            other_ids = [i for i in ids if i != user_id]
-            other_id = other_ids[0] if other_ids else user_id
-            rooms.append({"room_name": name, "other_user_id": other_id})
-        return Response({"rooms": rooms}, status=status.HTTP_200_OK)
+        try:
+            user_id = request.user.id
+            rooms = []
+
+            # 내 ID가 포함된 방 이름 검색
+            qs = ChatRoom.objects.filter(name__contains=str(user_id))
+
+            for room in qs:
+                try:
+                    ids = [int(x) for x in room.name.split("-")]
+
+                    if user_id not in ids:
+                        continue
+
+                    # 상대방 ID 추출
+                    other_ids = [i for i in ids if i != user_id]
+                    other_id = other_ids[0] if other_ids else user_id
+
+                    # 상대방 프로필 정보 추가 (프론트엔드 편의성)
+                    other_nickname = "알 수 없는 사용자"
+                    other_image = None
+
+                    try:
+                        target_profile = UserProfile.objects.get(user_id=other_id)
+                        other_nickname = target_profile.nickname
+                        if target_profile.images.exists():
+                            other_image = target_profile.images.first().image.url
+                    except UserProfile.DoesNotExist:
+                        pass
+
+                    rooms.append({
+                        "room_name": room.name,
+                        "other_user_id": other_id,
+                        "other_nickname": other_nickname,
+                        "other_image": other_image
+                    })
+
+                except ValueError:
+                    continue
+
+            return Response(rooms, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
