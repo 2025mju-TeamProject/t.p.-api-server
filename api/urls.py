@@ -14,9 +14,8 @@ from profiles.views import (
 
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
-    path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('profile/', ProfileView.as_view(), name='profile'),
-    path('users/<int:user_id>/profile/', UserProfileDetailView.as_view(), name='user-profile-detail'),
     path('saju/', get_saju_api, name='get_saju_api'),
     path('match-summary/<int:other_user_id>/', MatchSummaryView.as_view(), name='match-summary'),
 ]
