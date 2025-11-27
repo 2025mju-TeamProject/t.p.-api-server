@@ -170,3 +170,9 @@ local.json
 .venv/
 
 db.sqlite3
+
+# Mac OS Files
+.DS_Store
+
+# User Uploaded Files (Django MEDIA_ROOT)
+/media/
