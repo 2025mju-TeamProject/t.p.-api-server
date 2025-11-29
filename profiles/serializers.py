@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.exceptions import AuthenticationFailed
 
-from .models import UserProfile, ProfileImage
+from .models import UserProfile, ProfileImage, UserReport
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password # Django 기본 비번 검증
 from rest_framework.validators import UniqueValidator
@@ -140,3 +140,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise e
 
         return data
+
+class UserReportSerializer(serializers.ModelSerializer):
+    """신고 생성 전용 시리얼라이저"""
+    class Meta:
+        model = UserReport
+        fields = ['reason', 'description']
