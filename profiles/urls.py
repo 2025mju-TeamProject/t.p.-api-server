@@ -1,11 +1,33 @@
 # profiles/urls.py
 
 from django.urls import path
-from .views import UserReportCreateView
-
+from . import views
 urlpatterns = [
-    # ... 기존 URL들 ...
+    # 1. 회원가입 (POST /api/users/register/)
+    path('register/', views.UserRegistrationView.as_view(), name='register'),
 
-    # 사용자 신고 API
-    path('report/<int:user_id>/', UserReportCreateView.as_view(), name='report_user'),
+    # 2. 로그인 (POST /api/users/login/)
+    path('login/', views.MyTokenObtainPairView.as_view(), name='login'),
+
+    # 3. 내 프로필 조회/생성/수정 (GET, POST, PATCH /api/users/profile/)
+    path('profile/', views.ProfileView.as_view(), name='my_profile'),
+
+    # 4. 타인 프로필 상세 조회 (GET /api/users/<user_id>/)
+    # 예: /api/users/3/
+    path('<int:user_id>/', views.UserProfileDetailView.as_view(), name='user_profile_detail'),
+
+    # 5. 사주 만세력 계산 전용 (POST /api/users/saju/)
+    path('saju/', views.get_saju_api, name='get_saju'),
+
+    # 6. 매칭 한 줄 평 AI 생성 (POST /api/users/match-summary/<id>/)
+    path('match-summary/<int:other_user_id>/', views.MatchSummaryView.as_view(), name='match_summary'),
+
+    # 7. 프로필에서 사용자 신고 (POST /api/users/report/<id>/)
+    path('report/<int:user_id>/', views.report_user, name='report_user'),
+
+    # 8. 채팅방에서 사용자 신고 (POST /api/report/chat/<room_name>/
+    path('report/chat/<str:room_name>/', views.report_chat_user, name='report_chat_user'),
+    # 8. 회원 궁합 점수 조회 (GET /api/match/score/<target_id>/
+    path('match/score/<int:other_user_id>/', views.MatchSummaryView.as_view(), name='match-summary'),
+
 ]

@@ -77,6 +77,9 @@ def get_recommend_matches(request):
     [GET] /api/match/recommend/
     나와 이성인 유저 중
     가중치 점수(사주+취향+거리)가 가장 높은 상위 10명을 반환
+    [GET] /api/recommend/
+    나와 이성(Opposite Gender)인 유저 중
+    가중치 점수(사주+취향+거리)가 가장 높은 상위 10명을 반환합니다.
     """
     try:
         me = request.user.profile
