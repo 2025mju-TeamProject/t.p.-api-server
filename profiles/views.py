@@ -22,6 +22,7 @@ from .serializers import (
     UserRegistrationSerializer,
     UserReportSerializer
 )
+from chat.models import ChatRoom, Message
 
 User = get_user_model()
 openai.api_key = settings.OPENAI_API_KEY
@@ -467,3 +468,80 @@ def report_user(request, user_id):
         return Response({"message": "신고가 정상적으로 접수되었습니다. 관리자 검토 후 처리됩니다."}, status=status.HTTP_201_CREATED)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def report_chat_user(request, room_name):
+    """
+    [POST] 채팅방에서 사용자 신고하기
+    - 채팅방 이름(room_name)을 통해 상대방을 자동 식별
+    - 해당 채팅방의 최근 대화 내역(20개)을 자동으로 첨부하여 저장
+    """
+    reporter = request.user
+
+    # 1. 채팅방 및 상대방 식별
+    try:
+        user_ids = [int(uid) for uid in room_name.split('-')]
+
+        # 내가 이 방의 멤버인지 확인 (보안)
+        if reporter.id not in user_ids:
+            return Response(
+                {"error": "해당 채팅방의 멤버가 아닙니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        other_user_ids = [uid for uid in user_ids if uid != reporter.id]
+        if not other_user_ids:
+            return Response(
+                {"error": "대화 상대를 찾을 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_user = User.objects.get(id=other_user_ids[0])
+
+    except (ValueError, User.DoesNotExist):
+        return Response(
+            {"error": "잘못된 채팅방 정보이거나 사용자가 존재하지 않습니다."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 2. 채팅 로그 수집
+    chat_log = ""
+    try:
+        room = ChatRoom.objects.get(name=room_name)
+        # 최근 메시지 20개를 시간 역순으로 가져와서 다시 시간순 정렬
+        recent_messages = Message.objects.filter(room=room).order_by('-timestamp')[:20]
+        recent_messages = reversed(recent_messages)
+
+        # 로그 문자열 생성
+        log_lines = []
+        for msg in recent_messages:
+            sender_name = msg.sender.username
+            time_str = msg.timestamp.strftime("%Y-%m-%d %H:%M")
+            log_lines.append(f"[{time_str}] {sender_name}: {msg.content}")
+
+        chat_log = "\n".join(log_lines)
+    except ChatRoom.DoesNotExist:
+        chat_log = "(대화 내역 없음)"
+
+    # 3. 데이터 검증 및 저장
+    serializer = UserReportSerializer(data=request.data)
+    if serializer.is_valid():
+        input_desc = serializer.validated_data.get('description', '')
+
+        # 사용자가 쓴 내용 + 자동 수집된 채팅 로그
+        final_description = f"{input_desc}\n\n=== [시스템 자동 첨부: 최근 대화 로그] ===\n{chat_log}"
+
+        UserReport.objects.create(
+            reporter=reporter,
+            reported_user=target_user,
+            reason=serializer.validated_data['reason'],
+            description=final_description,
+            source='CHAT'
+        )
+        return Response(
+            {"message": "신고가 접수되었습니다. 대화 내역이 함께 전송되었습니다."},
+            status=status.HTTP_201_CREATED
+        )
+    return Response(serializer.errors,
+                    status = status.HTTP_400_BAD_REQUEST)
