@@ -176,3 +176,5 @@ db.sqlite3
 
 # User Uploaded Files (Django MEDIA_ROOT)
 /media/
+
+sabbadang.pem
