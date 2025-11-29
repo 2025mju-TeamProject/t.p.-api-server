@@ -68,14 +68,45 @@ class ProfileImage(models.Model):
     def __str__(self):
         return f"{self.profile.user.username}의 사진 {self.id}"
 
-# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-# def create_user_profile(sender, instance, created, **kwargs):
-#     if created:
-#         UserProfile.objects.create(user=instance)
-#
-# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-# def save_user_profile(sender, instance, **kwargs):
-#     try:
-#         instance.profile.save() # related_name이 'profile'인 경우 유지
-#     except UserProfile.DoesNotExist: # ✨ 변경
-#         UserProfile.objects.create(user=instance)
+class UserReport(models.Model):
+    """사용자 신고 내역 모델"""
+
+    # 신고 내용 카테고리
+    REPORT_TYPE_CHOICES = [
+        ('SPAM', '스팸'),
+        ('ABUSE', '욕설 및 비하 발언'),
+        ('ADULT', '나체 이미지 및 성적 행위'),
+        ('FAKE', '사기 및 거짓'),
+        ('OTHER', '기타'),
+    ]
+
+    # 신고 경로
+    REPORT_SOURCE_CHOICES = [
+        ('PROFILE', '프로필'),
+        ('CHAT', '채팅방'),
+    ]
+
+    # 신고 상태
+    REPORT_STATUS_CHOICES = [
+        ('PENDING', '접수 대기'),
+        ('RESOLVED', '처리 완료'),
+        ('REJECTED', '반려됨'),
+    ]
+
+    # 신고자
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_sent')
+    # 신고 당한 유저
+    reported_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reports_received')
+
+    reason = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES)
+    description = models.TextField(blank=True, null=True) # 상세 내용
+
+    source = models.CharField(max_length=10, choices=REPORT_SOURCE_CHOICES, default='PROFILE')
+    status = models.CharField(max_length=10, choices=REPORT_STATUS_CHOICES, default='PENDING')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    # 관리자 처리 시간
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"[{self.get_status_display()}] {self.reporter} -> {self.reported_user} ({self.get_reason_display()})"
