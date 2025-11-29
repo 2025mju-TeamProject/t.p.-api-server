@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -435,49 +435,35 @@ class MatchSummaryView(APIView):
 
         return Response({"summary": content}, status=status.HTTP_200_OK)
 
-class UserReportCreateView(APIView):
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def report_user(request, user_id):
     """
-    [POST] 특정 사용자 신고하기
-    일반 사용자는 생성만 가능, 조회는 admin 페이지에서 수행
+    [POST] 특정 사용자 신고하기 (프로필)
     """
+    reporter = request.user
 
-    permission_classes = [permissions.IsAuthenticated]
+    # 1. 신고 대상 확인
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "신고할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
-    def post(self, request, user_id):
-        reporter = request.user
+    # 2. 본인 신고 방지
+    if reporter.id == target_user.id:
+        return Response({"error": "자기 자신을 신고할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. 신고 대상 확인
-        try:
-            target_user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response(
-                {"error": "신고할 사용자를 찾을 수 없습니다."},
-            status=status.HTTP_404_NOT_FOUND
-            )
-
-        # 2. 본인 신고 방지
-        if reporter.id == target_user.id:
-            return Response(
-                {"error": "자기 자신을 신고할 없습니다."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 3. 데이터 검증 및 저장
-        serializer = UserReportSerializer(data=request.data)
-        if serializer.is_valid():
-            # DB 저장 (신고자, 대상자, 경로는 여기서 자동 주입)
-            UserReport.objects.create(
-                reporter=reporter,
-                reported_user=target_user,
-                reason=serializer.data['reason'],
-                description=serializer.validated_data.get('description', ''),
-                source='PROFILE' # 프로필에서 신고함
-            )
-            return Response(
-                {"message": "신고가 정상적으로 접수되었습니다. 관리자 검토 후 처리됩니다."},
-                status=status.HTTP_201_CREATED
-            )
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+    # 3. 데이터 검증 및 저장
+    serializer = UserReportSerializer(data=request.data)
+    if serializer.is_valid():
+        UserReport.objects.create(
+            reporter=reporter,
+            reported_user=target_user,
+            reason=serializer.validated_data['reason'],
+            description=serializer.validated_data.get('description', ''),
+            source='PROFILE'  # 프로필에서 신고했음을 명시
         )
+        return Response({"message": "신고가 정상적으로 접수되었습니다. 관리자 검토 후 처리됩니다."}, status=status.HTTP_201_CREATED)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
