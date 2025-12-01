@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from api.geo_utils import get_lat_lon
 from api.saju_calculator import calculate_saju
 from .models import ProfileImage, UserProfile, UserReport
 from .serializers import (
@@ -109,6 +110,18 @@ class ProfileView(APIView):
             profile.mbti = data.get("mbti")
             profile.location_city = data.get("location_city")
             profile.location_district = data.get("location_district")
+
+            # 도시와 구 정보가 모두 있을 때만 실행
+            if profile.location_city and profile.location_district:
+                lat, lon = get_lat_lon(profile.location_city, profile.location_district)
+
+                # API가 성공적으로 좌표를 가져왔다면 저장
+                if lat is not None and lon is not None:
+                    profile.latitude = lat
+                    profile.longitude = lon
+                else:
+                    print(f"좌표 변환 실패: {profile.location_city} {profile.location_district}")
+
 
             hobbies_raw = data.get("hobbies")
             if hobbies_raw:

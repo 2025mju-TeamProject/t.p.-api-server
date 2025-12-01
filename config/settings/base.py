@@ -32,6 +32,8 @@ SECRET_KEY = get_secret('SECRET_KEY')
 #API Keys
 OPENAI_API_KEY = get_secret('OPENAI_API_KEY')
 
+# KAKAO_REST_API
+KAKAO_API_KEY = get_secret('KAKAO_API_KEY')
 
 SAJU_API_KEY = "MY_SAJU_API_KEY"
 SAJU_API_URL = "https://api.saju.example.com/analysis"

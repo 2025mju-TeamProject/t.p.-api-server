@@ -38,6 +38,11 @@ class UserProfile(models.Model):
     # 시/군/구
     location_district = models.CharField(max_length=50, blank=True, null=True)
 
+    # 위도
+    latitude = models.FloatField(null=True, blank=True)
+    # 경도
+    longitude = models.FloatField(null=True, blank=True)
+
     # 7. 프로필 사진은 ProfileImage 모델에서 관리
     # 8. AI 생성 텍스트
     profile_text = models.TextField(blank=True, null=True)

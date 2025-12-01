@@ -33,6 +33,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'year', 'month', 'day', 'hour', 'minute',
             'birth_time_unknown',
             'location_city', 'location_district',
+            'latitude', 'longitude',
             'job', 'hobbies', 'mbti',
             'profile_text',
             'images'

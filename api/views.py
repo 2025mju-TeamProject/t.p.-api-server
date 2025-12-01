@@ -113,17 +113,27 @@ def get_recommend_matches(request):
             interest_score = get_interest_score(me.hobbies, target.hobbies)
 
             # 거리 점수 (0.1)
-            my_loc = get_lat_lon(me.location_city, me.location_district)
-            target_loc = get_lat_lon(target.location_city, target.location_district)
-
-            if my_loc and target_loc:
-                dist_km = calculate_distance(my_loc, target_loc)
-                geo_raw_score = get_distance_score(dist_km)  # 5~10점
+            # 내 좌표 확인
+            if me.latitude is not None and me.longitude is not None:
+                my_coord = (me.latitude, me.longitude)
             else:
-                dist_km = 0
-                geo_raw_score = 5  # 기본 점수
+                my_coord = None
 
-            # 100점 만점 기준으로 환산 (10점 -> 100점)
+            # 상대 좌표 확인
+            if target.latitude is not None and target.longitude is not None:
+                target_coord = (target.latitude, target.longitude)
+            else:
+                target_coord = None
+
+            # 거리 계산 (둘 다 좌표가 있을 때만)
+            dist_km = 0
+            geo_raw_score = 5 # 기본 점수
+
+            if my_coord and target_coord:
+                dist_km = calculate_distance(my_coord, target_coord)
+                geo_raw_score = get_distance_score(dist_km)
+
+            # 100점 만점 환산
             geo_score_100 = geo_raw_score * 10
 
             # 총점 계산
@@ -144,7 +154,7 @@ def get_recommend_matches(request):
                     "distance": geo_score_100
                 },
                 "info": {
-                    "distance_km": f"{dist_km:.1f}km" if my_loc and target_loc else "알수없음",
+                    "distance_km": f"{dist_km:.1f}km" if (my_coord and target_coord) else "알수없음",
                     "common_hobbies": list(set(me.hobbies or []) & set(target.hobbies or []))
                 },
                 "profile_image": target.images.first().image.url if target.images.exists() else None
