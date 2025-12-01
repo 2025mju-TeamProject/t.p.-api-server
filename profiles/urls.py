@@ -16,6 +16,7 @@ urlpatterns = [
 
     # 4. 내 프로필 조회/생성/수정 (GET, POST, PATCH /api/users/profile/)
     path('profile/', views.ProfileView.as_view(), name='my_profile'),
+    path('profile/regenerate/', views.ProfileRegenerateView.as_view(), name='profile_regenerate'),
 
     # 5. 타인 프로필 상세 조회 (GET /api/users/<user_id>/)
     # 예: /api/users/3/

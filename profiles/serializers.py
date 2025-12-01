@@ -35,7 +35,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'location_city', 'location_district',
             'latitude', 'longitude',
             'job', 'hobbies', 'mbti',
-            'profile_text',
+            'profile_text', 'ai_generated_at',
             'images'
         ]
 

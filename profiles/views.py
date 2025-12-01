@@ -1,11 +1,12 @@
 # profiles/views.py
 import json
-from datetime import date
+from datetime import date, timedelta
 
 import openai
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
@@ -299,6 +300,122 @@ class ProfileView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+class ProfileRegenerateView(APIView):
+    """
+    [POST] 프로필 AI 소개글 재생성 (7일 쿨다운)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return Response(
+                {"error": "프로필이 없습니다. 먼저 프로필을 작성해주세요."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # 7일 쿨다운 체크
+        now = timezone.now()
+        if profile.ai_generated_at:
+            cooldown_until = profile.ai_generated_at + timedelta(days=7)
+            if now < cooldown_until:
+                return Response(
+                    {
+                        "error": "AI 소개글은 7일에 한 번만 재생성할 수 있습니다.",
+                        "next_regen_at": cooldown_until.isoformat(),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # 필수 정보 검증 (프롬프트 품질 보호)
+        required_fields = {
+            "nickname": profile.nickname,
+            "gender": profile.gender,
+            "location_city": profile.location_city,
+            "location_district": profile.location_district,
+            "year": profile.year,
+            "month": profile.month,
+            "day": profile.day,
+        }
+        missing = [k for k, v in required_fields.items() if not v]
+        if missing:
+            return Response(
+                {"error": f"AI 소개글 재생성을 위해 필요한 정보가 없습니다: {', '.join(missing)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        calc_hour = profile.hour if profile.hour is not None else 0
+        calc_minute = profile.minute if profile.minute is not None else 0
+        saju_data = calculate_saju(
+            profile.year, profile.month, profile.day, calc_hour, calc_minute
+        )
+        if "error" in saju_data:
+            return Response(
+                saju_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        my_saju_pillar = saju_data.get("day_pillar")
+
+        prompt_lines = [
+            "아래 사용자의 정보를 바탕으로, 친근한 톤으로 소개글을 200자 내외로 작성해줘.",
+            "중요 요구사항: '태어난 날의 기운(일주)'을 밝은 기운이나 비유로 표현해 문장에 포함해줘.",
+            "",
+            f"- 닉네임: {profile.nickname}",
+            f"- 성별: {profile.gender}",
+            f"- 지역: {profile.location_city} {profile.location_district}",
+            f"- 태어난 날의 기운(일주): {my_saju_pillar}",
+        ]
+        if profile.job:
+            prompt_lines.append(f"- 직업: {profile.job}")
+        if profile.hobbies:
+            h_str = (
+                ", ".join(profile.hobbies)
+                if isinstance(profile.hobbies, list)
+                else str(profile.hobbies)
+            )
+            prompt_lines.append(f"- 관심사: {h_str}")
+        if profile.mbti:
+            prompt_lines.append(f"- MBTI: {profile.mbti}")
+        prompt_lines.extend(
+            ["", "- 어조: 친근하고 긍정적인 느낌, 가벼운 유머 허용"]
+        )
+        prompt = "\n".join(prompt_lines)
+
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a dating profile expert"},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.8,
+                max_tokens=300,
+            )
+            profile.profile_text = response.choices[0].message.content.strip().strip(
+                '"'
+            )
+            profile.ai_generated_at = now
+            profile.save(update_fields=["profile_text", "ai_generated_at"])
+
+            serializer = ProfileSerializer(profile)
+            return Response(
+                {
+                    "message": "AI 소개글이 재생성되었습니다.",
+                    "data": serializer.data,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"AI 소개글 생성에 실패했습니다: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class UserProfileDetailView(APIView):
