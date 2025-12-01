@@ -242,23 +242,57 @@ class ProfileView(APIView):
 
     def patch(self, request):
         """
-        [PATCH] AI가 만든 소개글을 수정
+        [PATCH] AI가 만든 소개글 및 프로필DB 수정
         """
 
         try:
             profile = request.user.profile
         except UserProfile.DoesNotExist:
             return Response(
-                {"error": "프로필이 없습니다."}, status=status.HTTP_404_NOT_FOUND
+                {"error": "프로필이 없습니다."},
+                status=status.HTTP_404_NOT_FOUND
             )
 
         serializer = ProfileTextUpdateSerializer(
             profile, data=request.data, partial=True
         )
         if serializer.is_valid():
+            new_city = request.data.get("location_city")
+            new_district = request.data.get("location_district")
+
+            # 요청에 지역 정보가 하나라도 포함되어 있다면?
+            if new_city is not None or new_district is not None:
+                # 변경할 값을 request.data에서 가져오고
+                # 변경 안 한 값은 기존 DB에 있는 값을 그대로 사용
+                # (빈 문자열 올 때, .strip()으로 공백 처리)
+                if new_city is not None:
+                    city_to_search = new_city.strip()
+                else:
+                    city_to_search = profile.location_city
+
+                if new_district is not None:
+                    dist_to_search = new_district.strip()
+                else:
+                    dist_to_search = profile.location_district
+
+                # 도시와 구 정보가 둘 다 유효할 때만 API 호출
+                if city_to_search and dist_to_search:
+                    lat, lon = get_lat_lon(city_to_search, dist_to_search)
+
+                    # 좌표 성공적으로 가져오면 인스턴스에 직접 주입
+                    if lat is not None and lon is not None:
+                        serializer.instance.latitude = lat
+                        serializer.instance.longitude = lon
+
+                        serializer.instance.location_city = city_to_search
+                        serializer.instance.location_district = dist_to_search
+
             serializer.save()
             return Response(
-                serializer.data,
+                {
+                    "message" : "프로필이 성공적으로 수정되었습니다.",
+                    "data": serializer.data
+                },
                 status=status.HTTP_200_OK
             )
         return Response(

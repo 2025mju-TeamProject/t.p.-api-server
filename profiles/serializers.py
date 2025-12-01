@@ -41,12 +41,17 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class ProfileTextUpdateSerializer(serializers.ModelSerializer):
     """
-    [PATCH] 사용자가 'profile_text' 필드 수정할 때 사용
+    [PATCH] 사용자가 'profile_text' 외 프로필DB 필드 수정할 때 사용
     """
 
     class Meta:
         model = UserProfile
-        fields = ['profile_text']
+        fields = ['nickname', 'gender', 'job', 'mbti',
+            'year', 'month', 'day', 'hour', 'minute', 'birth_time_unknown',
+            'location_city', 'location_district',
+            'hobbies', 'profile_text']
+
+        read_only_fields = ['user', 'latitude', 'longitude']
 
 # 2. 회원가입/로그인용 시리얼라이저
 class UserRegistrationSerializer(serializers.ModelSerializer):
