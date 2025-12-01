@@ -15,7 +15,7 @@ class ProfileImageSerializer(serializers.ModelSerializer):
         model = ProfileImage
         fields = ['id', 'image']
 
-# 2. ??? 관리용 시리얼라이저
+# 2. 사용자 프로필 관리용 시리얼라이저
 class ProfileSerializer(serializers.ModelSerializer):
     """
     [GET, POST] 사용자 프로필 전체를 조회하거나 생성(AI 생성)할 때 사용함
@@ -131,13 +131,28 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         try:
             # 1. SimpleJWT의 기본 로그인 검증 먼저 실행
             data = super().validate(attrs)
-        except AuthenticationFailed as e:
+        except AuthenticationFailed:
             # 2. 기본 검증에서 로그인 실패 시,
             #    e.codes에 'no_activate_account'가 포함됨
-            if hasattr(e, 'detail') and 'no_activate_account' in str(e.detail):
-                raise AuthenticationFailed('아이디와 비밀번호가 일치하지 않습니다.')
+            raise AuthenticationFailed('아이디와 비밀번호가 일치하지 않습니다.')
+        except Exception as e:
+            raise AuthenticationFailed(f'로그인 오류: {str(e)}')
 
-            raise e
+        # 2. 프로필 존재 여부 확인
+        user = self.user
+        profile = user.profile
+
+        try:
+            if profile.nickname is None:
+                data['message'] = "프로필이 비어있습니다."
+                data['has_profile'] = False
+            else:
+                data['message'] = "프로필이 존재합니다."
+                data['has_profile'] = True
+
+        except UserProfile.DoesNotExist:
+            data['message'] = "프로필 데이터가 없습니다."
+            data['has_profile'] = False
 
         return data
 

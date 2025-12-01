@@ -215,7 +215,11 @@ class ProfileView(APIView):
             profile.save()
 
             serializer = ProfileSerializer(profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"message": "프로필 생성이 완료되었습니다.",
+                 "data": serializer.data},
+                status=status.HTTP_201_CREATED
+            )
 
         except Exception as e:
             return Response(

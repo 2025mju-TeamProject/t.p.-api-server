@@ -106,4 +106,3 @@ class UserReport(models.Model):
 
     def __str__(self):
         return f"[{self.get_status_display()}] {self.reporter} -> {self.reported_user} ({self.get_reason_display()})"
-
