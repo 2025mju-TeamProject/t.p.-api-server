@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'chat',
     'api',
     'profiles',
+    'interaction',
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
