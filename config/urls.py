@@ -26,6 +26,8 @@ urlpatterns = [
 
     # POST /api/token/refresh/ (토큰 리프레시)
     path('api/login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    path('api/interaction/', include('interaction.urls')),
 ]
 
 # DEBUG 모드 시, 업로드 된 미디어 파일 서빙

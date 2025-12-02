@@ -167,3 +167,18 @@ class UserReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserReport
         fields = ['reason', 'description']
+
+class SimpleProfileSerializer(serializers.ModelSerializer):
+    """
+    [공용] 리스트용 가벼운 프로필 정보 (프로필 사진, 닉네임)
+    """
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = ['user_id', 'nickname', 'image']
+
+    def get_image(self, obj):
+        if obj.images.exists():
+            return obj.images.first().image.url
+        return None
