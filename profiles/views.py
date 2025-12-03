@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -301,6 +302,38 @@ class ProfileView(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+class UserStatusCheckView(APIView):
+    """
+    [GET] /api/users/status/
+    현재 로그인한 유저의 프로필 존재 여부 확인
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # 1. 프로필 객체 가져오기 시도
+        try:
+            profile = user.profile
+
+            # 2. profile_text 값 있는지 확인 (None이 아니고, 빈 문자열도 아니어야 함)
+            if profile.profile_text and profile.profile_text.strip():
+                return Response(
+                    {"has_profile": True},
+                    status=status.HTTP_200_OK
+                )
+            else:
+                # 프로필 껍데기는 있는데 내용이 비어있음
+                return Response(
+                    {"has_profile": False},
+                    status=status.HTTP_200_OK
+                )
+        except Exception:
+            # 프로필 객체 자체가 아예 없음
+            return Response(
+                {"has_profile": False},
+                status=status.HTTP_200_OK
+            )
 
 class ProfileRegenerateView(APIView):
     """

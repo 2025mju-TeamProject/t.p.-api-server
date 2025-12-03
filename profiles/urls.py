@@ -37,4 +37,7 @@ urlpatterns = [
     # 9. 회원 궁합 점수 조회 (GET /api/match/score/<target_id>/
     path('match/score/<int:other_user_id>/', views.MatchSummaryView.as_view(), name='match-summary'),
 
+    # 10. 유저 프로필 유무 확인 (GET /api/users/status/)
+    path('status/', views.UserStatusCheckView.as_view(), name='user-status-check'),
+
 ]

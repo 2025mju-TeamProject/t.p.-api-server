@@ -144,22 +144,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         except Exception as e:
             raise AuthenticationFailed(f'로그인 오류: {str(e)}')
 
-        # 2. 프로필 존재 여부 확인
-        user = self.user
-        profile = user.profile
-
-        try:
-            if profile.nickname is None:
-                data['message'] = "프로필이 비어있습니다."
-                data['has_profile'] = False
-            else:
-                data['message'] = "프로필이 존재합니다."
-                data['has_profile'] = True
-
-        except UserProfile.DoesNotExist:
-            data['message'] = "프로필 데이터가 없습니다."
-            data['has_profile'] = False
-
         return data
 
 class UserReportSerializer(serializers.ModelSerializer):
