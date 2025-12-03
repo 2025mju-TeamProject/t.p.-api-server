@@ -42,10 +42,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name,
-        )
+        if hasattr(self, "room_group_name"):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name,
+            )
 
     async def receive(self, text_data):
         payload = json.loads(text_data)
@@ -66,11 +67,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def chat_message(self, event):
+        # 1. 이벤트에서 데이터 추출
+        # MessageUploadView에서 보낸 message, image 등을 여기서 받음
+        message = event.get("message", "")
+        sender = event.get("sender", "알 수 없음")
+        image = event.get("image", None)
+        timestamp = event.get("timestamp", "")
+
         await self.send(
             text_data=json.dumps(
                 {
-                    "message": event["message"],
-                    "sender": event["sender"],
+                    "message": message,
+                    "sender": sender,
+                    "image": image,
+                    "timestamp": timestamp
                 }
             )
         )

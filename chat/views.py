@@ -2,6 +2,7 @@
 
 import json
 import openai
+from PIL.SpiderImagePlugin import isSpiderImage
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -19,6 +20,11 @@ from rest_framework import status, permissions
 from .models import ChatRoom, Message, Block
 from .serializers import MessageSerializer
 from profiles.models import UserProfile
+
+# 채널 레이어
+from channels.layers import get_channel_layer
+# 비동기 코드를 동기에서 실행
+from asgiref.sync import async_to_sync
 
 User = get_user_model()
 openai.api_key = settings.OPENAI_API_KEY
@@ -366,3 +372,69 @@ class ChatRoomListView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MessageUploadView(APIView):
+    """
+    [POST] /api/chat/upload/<str:room_name>/
+    이미지 파일 업로드하고, 웹소켓을 통해 채팅방에 알림
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, room_name):
+        # 1. 채팅방 존재 여부 확인
+        room, created = ChatRoom.objects.get_or_create(name=room_name)
+
+        # 2. 권환 확인
+        try:
+            user_ids = [int(uid) for uid in room_name.split('-')]
+            if request.user.id not in user_ids:
+                return Response(
+                    {"error": "이 채팅방에 메시지를 보낼 권한이 없습니다."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except:
+            return Response(
+                {"error": "잘못된 채팅방 이름입니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. 이미지 파일 가져오기
+        image_file = request.FILES.get('image')
+        content_text = request.data.get('message', '') # 텍스트도 같이 보낼 수 있음
+
+        if not image_file and not content_text:
+            return Response(
+                {"error": "이미나 텍스트 중 하나는 필수입니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 4. DB에 메시지 저장
+        new_msg = Message.objects.create(
+            room = room,
+            sender = request.user,
+            content = content_text,
+            image = image_file
+        )
+
+        # 5. 웹소켓으로 실시간 알림 보내기
+        channel_layer = get_channel_layer()
+        room_group_name = f"chat_{room_name}"
+
+        # 보낼 데이터 구성 (이미지 URL 포함)
+        image_url = new_msg.image.url if new_msg.image else None
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                "type": "chat_message",
+                "message": new_msg.content,
+                "sender": request.user.username,
+                "image": image_url,
+                "timestamp": new_msg.timestamp.isoformat()
+            }
+        )
+
+        return Response(
+            MessageSerializer(new_msg).data,
+            status=status.HTTP_201_CREATED
+        )

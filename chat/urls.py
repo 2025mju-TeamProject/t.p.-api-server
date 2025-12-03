@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/block/<int:user_id_to_block>/', views.BlockUserView.as_view(), name='block-user-api'),
     path('api/suggestions/<str:room_name>/', views.ChatSuggestionView.as_view(), name='chat-suggestions-api'),
     path('api/rooms/', views.ChatRoomListView.as_view(), name='chat-room-list-api'),
+    path('api/upload/<str:room_name>/', views.MessageUploadView.as_view(), name='chat-message-upload')
 ]
