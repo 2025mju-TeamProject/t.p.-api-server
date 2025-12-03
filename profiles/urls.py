@@ -11,8 +11,8 @@ urlpatterns = [
     # 2. 로그인 (POST /api/users/login/)
     path('login/', views.MyTokenObtainPairView.as_view(), name='login'),
 
-    # 3. Refresh Token 보냄 (POST /api/uses/refresh/)
-    path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # 3. Refresh Token 보냄 (POST /api/users/token/refresh/)
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # 4. 내 프로필 조회/생성/수정 (GET, POST, PATCH /api/users/profile/)
     path('profile/', views.ProfileView.as_view(), name='my_profile'),
