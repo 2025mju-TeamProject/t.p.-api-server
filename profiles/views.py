@@ -771,4 +771,4 @@ def report_chat_user(request, room_name):
             status=status.HTTP_201_CREATED
         )
     return Response(serializer.errors,
-                    status = status.HTTP_400_BAD_REQUEST)
+        status = status.HTTP_400_BAD_REQUEST)
