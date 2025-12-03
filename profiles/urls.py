@@ -1,7 +1,7 @@
 # profiles/urls.py
 
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from . import views
 urlpatterns = [
@@ -40,4 +40,6 @@ urlpatterns = [
     # 10. 유저 프로필 유무 확인 (GET /api/users/status/)
     path('status/', views.UserStatusCheckView.as_view(), name='user-status-check'),
 
+    # 11. Token 유효성 검사 (GET /api/token/verify/)
+    path('token/verify/', TokenVerifyView.as_view(), name="token_verify"),
 ]
