@@ -18,6 +18,8 @@ class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_messages', on_delete=models.CASCADE)
     # 메시지 내용
     content = models.TextField()
+    # 이미지 파일 추가
+    image = models.ImageField(upload_to='chat_images/%Y/%m%/%d/', null=True, blank=True)
     # 보낸 시간
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -25,6 +27,8 @@ class Message(models.Model):
         ordering = ['timestamp'] # 메시지를 보낸 시간 순으로 정렬
 
     def __str__(self):
+        # 텍스트가 없으면 "사진 메시지"라고 표시됨
+        preview = self.content[:20] if self.content else "사진"
         return f'{self.sender.username} in {self.room.name}: {self.content[:20]}'
 
 class Block(models.Model):
