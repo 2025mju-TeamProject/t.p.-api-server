@@ -152,7 +152,7 @@ class UserReportSerializer(serializers.ModelSerializer):
     """신고 생성 전용 시리얼라이저"""
     class Meta:
         model = UserReport
-        fields = ['reason', 'description']
+        fields = ['reason']
 
 class SimpleProfileSerializer(serializers.ModelSerializer):
     """

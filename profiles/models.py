@@ -95,7 +95,6 @@ class UserReport(models.Model):
         ('ABUSE', '욕설 및 비하 발언'),
         ('ADULT', '나체 이미지 및 성적 행위'),
         ('FAKE', '사기 및 거짓'),
-        ('OTHER', '기타'),
     ]
 
     # 신고 경로

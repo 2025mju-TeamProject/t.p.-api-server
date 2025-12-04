@@ -652,7 +652,7 @@ class MatchSummaryView(APIView):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
-def report_user(request, user_id):
+def report_profile_user(request, target_id):
     """
     [POST] 특정 사용자 신고하기 (프로필)
     """
@@ -660,7 +660,7 @@ def report_user(request, user_id):
 
     # 1. 신고 대상 확인
     try:
-        target_user = User.objects.get(id=user_id)
+        target_user = User.objects.get(id=target_id)
     except User.DoesNotExist:
         return Response({"error": "신고할 사용자를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -675,7 +675,7 @@ def report_user(request, user_id):
             reporter=reporter,
             reported_user=target_user,
             reason=serializer.validated_data['reason'],
-            description=serializer.validated_data.get('description', ''),
+            description="(프로필 화면에서의 신고)",
             source='PROFILE'  # 프로필에서 신고했음을 명시
         )
         return Response({"message": "신고가 정상적으로 접수되었습니다. 관리자 검토 후 처리됩니다."}, status=status.HTTP_201_CREATED)
@@ -684,7 +684,7 @@ def report_user(request, user_id):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
-def report_chat_user(request, room_name):
+def report_chat_user(request, target_id):
     """
     [POST] 채팅방에서 사용자 신고하기
     - 채팅방 이름(room_name)을 통해 상대방을 자동 식별
@@ -694,34 +694,25 @@ def report_chat_user(request, room_name):
 
     # 1. 채팅방 및 상대방 식별
     try:
-        user_ids = [int(uid) for uid in room_name.split('-')]
-
-        # 내가 이 방의 멤버인지 확인 (보안)
-        if reporter.id not in user_ids:
-            return Response(
-                {"error": "해당 채팅방의 멤버가 아닙니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        other_user_ids = [uid for uid in user_ids if uid != reporter.id]
-        if not other_user_ids:
-            return Response(
-                {"error": "대화 상대를 찾을 수 없습니다."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        target_user = User.objects.get(id=other_user_ids[0])
-
-    except (ValueError, User.DoesNotExist):
+        target_user = User.objects.get(id=target_id)
+    except User.DoesNotExist:
         return Response(
-            {"error": "잘못된 채팅방 정보이거나 사용자가 존재하지 않습니다."},
+            {"error": "신고할 대상을 찾을 수 없습니다."},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if reporter.id == target_user.id:
+        return Response(
+            {"error": "자기 자신을 신고할 수 없습니다."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 2. 채팅 로그 수집
+    # 2. 채팅방 찾기
+    room = ChatRoom.objects.filter(participants=reporter).filter(participants=target_user).first()
+
+    # 3. 채팅 로그 수집
     chat_log = ""
     try:
-        room = ChatRoom.objects.get(name=room_name)
         # 최근 메시지 20개를 시간 역순으로 가져와서 다시 시간순 정렬
         recent_messages = Message.objects.filter(room=room).order_by('-timestamp')[:20]
         recent_messages = reversed(recent_messages)
@@ -733,17 +724,19 @@ def report_chat_user(request, room_name):
             time_str = msg.timestamp.strftime("%Y-%m-%d %H:%M")
             log_lines.append(f"[{time_str}] {sender_name}: {msg.content}")
 
-        chat_log = "\n".join(log_lines)
-    except ChatRoom.DoesNotExist:
-        chat_log = "(대화 내역 없음)"
+        if log_lines:
+            chat_log = "\n".join(log_lines)
+        else:
+            chat_log = "(대화 내역 없음)"
 
-    # 3. 데이터 검증 및 저장
+    except:
+        # 방이 없어도 신고는 가능하지만 로그 없음을 명시함
+        chat_log = "(채팅방이 존재하지 않거나 대화 내역이 없습니다."
+
+    # 4. 데이터 검증 및 저장
     serializer = UserReportSerializer(data=request.data)
     if serializer.is_valid():
-        input_desc = serializer.validated_data.get('description', '')
-
-        # 사용자가 쓴 내용 + 자동 수집된 채팅 로그
-        final_description = f"{input_desc}\n\n=== [시스템 자동 첨부: 최근 대화 로그] ===\n{chat_log}"
+        final_description = f"=== [시스템 자동 첨부: 최근 대화 로그] ===\n{chat_log}"
 
         UserReport.objects.create(
             reporter=reporter,

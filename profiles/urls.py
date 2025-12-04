@@ -28,11 +28,11 @@ urlpatterns = [
     # 7. 매칭 한 줄 평 AI 생성 (POST /api/users/match-summary/<id>/)
     path('match-summary/<int:other_user_id>/', views.MatchSummaryView.as_view(), name='match_summary'),
 
-    # 8. 프로필에서 사용자 신고 (POST /api/users/report/<id>/)
-    path('report/<int:user_id>/', views.report_user, name='report_user'),
+    # 8. 프로필에서 사용자 신고 (POST /api/users/report/<target_id>/)
+    path('report/<int:target_id>/', views.report_profile_user, name='report_profile_user'),
 
-    # 9. 채팅방에서 사용자 신고 (POST /api/report/chat/<room_name>/
-    path('report/chat/<str:room_name>/', views.report_chat_user, name='report_chat_user'),
+    # 9. 채팅방에서 사용자 신고 (POST /api/users/report/chat/<target_id>/
+    path('report/chat/<int:target_id>/', views.report_chat_user, name='report_chat_user'),
 
     # 9. 회원 궁합 점수 조회 (GET /api/match/score/<target_id>/
     path('match/score/<int:other_user_id>/', views.MatchSummaryView.as_view(), name='match-summary'),
