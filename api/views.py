@@ -145,7 +145,7 @@ def get_recommend_matches(request):
                 "user_id": target.user.id,
                 "nickname": target.nickname,
                 "gender": target.gender,
-                "age": (2025 - target.year + 1) if target.year else "?",
+                "age": target.age if target.age else "?",
                 "mbti": target.mbti,
                 "job": target.job,
                 "location": f"{target.location_city} {target.location_district}",
