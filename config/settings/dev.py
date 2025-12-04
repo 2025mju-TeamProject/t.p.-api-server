@@ -32,7 +32,7 @@ OPENAI_API_KEY = get_secret('OPENAI_API_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 SIMPLE_JWT = {
     # [개발용] 유효기간을 길게 설정 (로그인이 자주 풀리면 테스트하기 귀찮음)
