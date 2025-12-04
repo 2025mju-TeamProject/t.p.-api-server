@@ -144,8 +144,10 @@ def get_recommend_matches(request):
             match_results.append({
                 "user_id": target.user.id,
                 "nickname": target.nickname,
-                "age": (2025 - target.year + 1) if target.year else "?",
                 "gender": target.gender,
+                "age": (2025 - target.year + 1) if target.year else "?",
+                "mbti": target.mbti,
+                "job": target.job,
                 "location": f"{target.location_city} {target.location_district}",
                 "total_score": round(total_score, 1),
                 "scores": {
