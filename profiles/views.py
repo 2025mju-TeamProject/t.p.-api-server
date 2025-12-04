@@ -554,18 +554,6 @@ class MatchSummaryView(APIView):
             data = calculate_saju(y, m, d, hour, minute)
             return data if "error" not in data else None
 
-        # def age_from_profile(p):
-        #     try:
-        #         if not (p.year and p.month and p.day):
-        #             return None
-        #         today = date.today()
-        #         years = today.year - p.year - (
-        #             (today.month, today.day) < (p.month, p.day)
-        #         )
-        #         return years
-        #     except Exception:
-        #         return None
-
         def hobbies_str(p):
             if isinstance(p.hobbies, list):
                 return ", ".join(p.hobbies)
