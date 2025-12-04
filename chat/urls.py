@@ -3,11 +3,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('<int:other_user_id>/', views.chat_room, name='chat_room'),
-
-    path('api/messages/<str:room_name>/', views.MessageHistoryView.as_view(), name='message-history-api'),
+    path('api/messages/<int:target_id>/', views.MessageHistoryView.as_view(), name='message-history-api'),
     path('api/block/<int:user_id_to_block>/', views.BlockUserView.as_view(), name='block-user-api'),
-    path('api/suggestions/<str:room_name>/', views.ChatSuggestionView.as_view(), name='chat-suggestions-api'),
+    path('api/suggestions/<int:target_id>/', views.ChatSuggestionView.as_view(), name='chat-suggestions-api'),
     path('api/rooms/', views.ChatRoomListView.as_view(), name='chat-room-list-api'),
-    path('api/upload/<str:room_name>/', views.MessageUploadView.as_view(), name='chat-message-upload')
+    path('api/message/<int:target_id>/', views.MessageSendView.as_view(), name='message-send')
 ]

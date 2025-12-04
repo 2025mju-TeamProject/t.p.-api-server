@@ -2,7 +2,6 @@
 
 import json
 import openai
-from PIL.SpiderImagePlugin import isSpiderImage
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -29,126 +28,192 @@ from asgiref.sync import async_to_sync
 User = get_user_model()
 openai.api_key = settings.OPENAI_API_KEY
 
-# 1. 채팅방 입장 뷰
-@login_required
-def chat_room(request, other_user_id):
+def get_personal_chat_room(user_a, user_b):
     """
-    두 사용자 ID를 기반으로 1:1 채팅방 페이지를 렌더링 함
+    [헬퍼 함수] 두 유저(A, B)가 속한 1:1 채팅방을 찾거나, 없으면 만듭니다.
+    DB 관계를 조회함
     """
-    try:
-        my_id = int(request.user.id)
-        other_user_id = int(other_user_id)
-    except ValueError:
-        raise Http404("유효하지 않은 사용자 ID입니다.")
+    # 1. 두 유저가 모두 포함된 방을 찾습니다. (교집함)
+    # participants에 user_a가 있고 user_b도 있는 방
+    room = ChatRoom.objects.filter(participants=user_a).filter(participants=user_b).first()
 
-    if my_id == other_user_id:
-        raise Http404("다른 사용자와의 채팅만 지원합니다.")
+    # 2. 방이 없으면 새로 생성
+    if not room:
+        room = ChatRoom.objects.create()
+        room.participants.add(user_a, user_b)
 
-    # 차단 확인 로직
-    other_user = get_object_or_404(User, id=other_user_id)
+    return room
 
-    # 차단 상태 확인
-    is_blocked = Block.objects.filter(
-        Q(blocker=request.user, blocked=other_user) | # 내가 차단함
-        Q(blocker=other_user, blocked=request.user)   # 상대방이 날 차단함
-    ).exists()
+class MessageSendView(APIView):
+    """
+    [POST] /api/chat/message/<int:target_id>/
+    상대방(target_id)에게 메시지나 사진을 보냄
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-    if is_blocked:
-        # 차단한 경우, 404 에러 띄우고 채팅방 입장 막음
-        raise Http404("차단했거나 차단된 사용자와의 채팅방입니다.")
+    def post(self, request, target_id):
+        sender = request.user
 
+        # 1. 상대방 유저 확인
+        target_user = get_object_or_404(User, id=target_id)
 
-    room_name = "-".join(sorted([str(my_id), str(other_user_id)]))
-    room, _ = ChatRoom.objects.get_or_create(name=room_name)
+        # 2. 자기 자신에게 보내기 방지
+        if sender.id == target_id:
+            return Response(
+                {"error": "자기 자신과는 대화할 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    # 이전 대화 내용 가져오기
-    prev_messages = [
-        {
-            'sender': m.sender.username,
-            'content': m.content,
-            'timestamp': m.timestamp.isoformat()
-        }
-        for m in room.messages.order_by('timestamp')
-    ]
+        # 3. 헬퍼 함수를 통해 방을 가져옴 (없으면 자동 생성)
+        room = get_personal_chat_room(sender, target_user)
 
-    return render(
-        request,
-        "chat/chat_room.html",
-        {
-            "other_user_id": other_user_id,
-            "room_name": room_name,
-            "prev_messages": prev_messages,
-        },
-    )
+        # 4. 차단 여부 확인
+        is_blocked = Block.objects.filter(
+            Q(blocker=sender, blocked=target_user) |
+            Q(blocker=target_user, blocked=sender)
+        ).exists()
+
+        if is_blocked:
+            return Response(
+                {"error": "차단된 관계입니다."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # 5. 입력 데이터 확인
+        image_file = request.FILES.get('image')
+        content_text = request.data.get('message', '')
+
+        if not image_file and not content_text:
+            return Response(
+                {"error": "내용을 입력해주세요."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 6. 메시지 저장
+        new_msg = Message.objects.create(
+            room=room,
+            sender=sender,
+            content=content_text,
+            image=image_file
+        )
+
+        # 7. 웹소켓으로 실시간 알림 전송
+        channel_layer = get_channel_layer()
+        room_group_name = f"chat_{room.id}"
+
+        image_url = new_msg.image.url if new_msg.image else None
+
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                "type": "chat_message",
+                "message_id": new_msg.id,
+                "message": new_msg.content,
+                "sender": sender.id,
+                "sender_name": sender.username,
+                "image": image_url,
+                "timestamp": str(new_msg.timestamp)
+            }
+        )
+        return Response(
+            MessageSerializer(new_msg).data,
+            status=status.HTTP_201_CREATED
+        )
 
 # 2. REST API views : 과거 메시지 내역
 class MessageHistoryView(APIView):
     """
     특정 채팅방의 과거 메시지 내역을 불러오는 REST API
-    URL 예 : /api/chat/message/2-5/
+    URL 예 : /api/chat/history/<int:target_id>/
     """
     # IsAuthenticated: 로그인한 사용자만 이 API에 접근 가능함
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, room_name):
-        """
-        채팅방 이름(room_name)으로 과거 메시지 조회함
-        """
-        try:
-            user_ids = [int(uid) for uid in room_name.split('-')]
-            # room_name에서 내 ID각 아닌 다른 ID를 찾음
-            other_user_id = [uid for uid in user_ids if uid != request.user.id][0]
-            other_user = User.objects.get(id=other_user_id)
+    def get(self, request, target_id):
+        target_user = get_object_or_404(User, id=target_id)
 
-            is_blocked = Block.objects.filter(
-                Q(blocker=request.user, blocked=other_user) |
-                Q(blocker=other_user, blocked=request.user)
-            ).exists()
+        # 1. 차단 확인
+        is_blocked = Block.objects.filter(
+            Q(blocker=request.user, blocked=target_user) |
+            Q(blocker=target_user, blocked=request.user)
+        ).exists()
 
-            if is_blocked:
-                return Response(
-                    {"error": "차단된 사용자와의 내역을 볼 수 없습니다."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        except Exception:
+        if is_blocked:
             return Response(
-                {"error": "채팅방 또는 사용자를 찾을 수 없습니다."},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "차단된 사용자외의 내역을 볼 수 없습니다."},
+                status=status.HTTP_403_FORBIDDEN
             )
 
-        try:
-            # 1. URL로 받은 room_name을 이용해 채팅방 찾음(ChatRoom 모델은 consumers.py에서 get_or_create_room으로 생성함)
-            room = ChatRoom.objects.get(name=room_name)
+        # 2. 방 찾기
+        room = ChatRoom.objects.filter(participants=request.user).filter(participants=target_user).first()
 
-            # 2. 이 API를 요청한 사용자가 해당 채팅방의 참여자 맞는지 판단(room_name은 "ID1-ID2" 형식으로 파싱)
-            allowed_users = [int(uid) for uid in room.name.split('-')]
-            if request.user.id not in allowed_users:
-                return Response(
-                    {"error": "이 채팅방에 접근할 권한이 없습니다."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-
-            # 3. 해당 채팅방의 모든 메시지를 가져옴
-            messages = room.messages.all()
-
-            # 4. Serializer를 통해 메시지 목록을 JSON으로 변환함
-            serializer = MessageSerializer(messages, many=True)
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except ChatRoom.DoesNotExist:
-            # 아직 대화가 시작 안 돼서 ChatRoom 없는 경우
+        if not room:
+            # 대화한 적 없음
             return Response([], status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response(
-                {"error": f"메시지를 불러오는 중 오류 발생: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+
+        # 3. 메시지 가져오기
+        messages = room.messages.all()
+        serializer = MessageSerializer(messages, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ChatRoomListView(APIView):
+    """
+    내 토큰으로 내가 속한 채팅방 목록을 조회
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # 1. 내가 참여 중인 모든 방 조회
+        my_rooms = ChatRoom.objects.filter(participants=user).prefetch_related('participants', 'messages')
+
+        results = []
+        for room in my_rooms:
+            # 2. 상대방 찾기 (나를 제외한 나머지 1명)
+            other_user = room.participants.exclude(id=user.id).first()
+
+            # 상대방이 없으면 건너뜀 (건너뛰지말고 response값 만들기)
+            if not other_user:
+                continue
+
+            # 3. 상대방 프로필 정보 가져오기
+            other_nickname = other_user.username
+            other_image = None
+            try:
+                profile = other_user.profile
+
+                if profile.nickname:
+                    other_nickname = profile.nickname
+                if profile.images.exists():
+                    other_image = profile.images.first().image.url
+            except UserProfile.DoesNotExist:
+                pass
+
+            # 4. 마지막 메시지
+            last_msg = room.messages.last()
+            last_content = ""
+            last_timestamp = room.created_at
+            if last_msg:
+                last_content = "사진" if (last_msg.image and not last_msg.content) else last_msg.content
+                last_timestamp = last_msg.timestamp
+
+            results.append({
+                "room_id": room.id,  # 방 ID
+                "other_user_id": other_user.id,  # 상대방 ID
+                "other_nickname": other_nickname,
+                "other_image": other_image,
+                "last_message": last_content,
+                "timestamp": last_timestamp
+            })
+
+        return Response(results, status=status.HTTP_200_OK)
 
 # 3. REST API: 사용자 차단/해제
 class BlockUserView(APIView):
     """
-    사용자를 차단하거나 차단 해제하는 API
+    사용자를 차단하거나 차단/해제하는 API
     - POST: 차단
     - DELETE: 차단 해제
     """
@@ -171,7 +236,7 @@ class BlockUserView(APIView):
             )
 
         # 이미 차단했는지 확인하고 없으면 생성
-        block, created = Block.objects.get_or_create(blocker=blocker, blocked= blocked)
+        block, created = Block.objects.get_or_create(blocker=blocker, blocked=blocked)
 
         if created:
             return Response(
@@ -196,11 +261,11 @@ class BlockUserView(APIView):
             )
 
         # 차단 기록을 찾아서 삭제
-        deleted_count, _ = Block.objects.filter(blocker=blocker, blocked=blocked).delete()
+        count, _ = Block.objects.filter(blocker=blocker, blocked=blocked).delete()
 
-        if deleted_count > 0:
+        if count > 0:
             return Response(
-                {"message": f"{blocked.username}님을 차단 해제했습니다."},
+                {"message": "차단 해제했습니다."},
                 status=status.HTTP_200_OK
             )
         else:
@@ -216,21 +281,19 @@ class ChatSuggestionView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, room_name):
+    def post(self, request, target_id):
         try:
-            room = ChatRoom.objects.get(name=room_name)
-        except ChatRoom.DoesNotExist:
+            target_user = User.objects.get(name=target_id)
+        except User.DoesNotExist:
             return Response(
-                {"error": "채팅방이 없습니다."},
+                {"error": "상대방을 찾을 수 없습니다."},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        allowed_users = [int(uid) for uid in room.name.split("-")]
-        if request.user.id not in allowed_users:
-            return Response(
-                {"error": "이 채팅방에 접근할 수 없습니다."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        room = ChatRoom.objects.filter(participants=request.user).filter(participants=target_user).first()
+
+        if not room:
+            return Response({"error": "대화 기록이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         messages = list(
             Message.objects.filter(room=room)
@@ -272,10 +335,9 @@ class ChatSuggestionView(APIView):
             return "; ".join(parts) if parts else None
 
         if len(messages) < 10:
-            other_id = [uid for uid in allowed_users if uid != request.user.id]
-            other_user = User.objects.filter(id=other_id[0]).first() if other_id else None
             my_summary = summary_for(request.user)
-            other_summary = summary_for(other_user) if other_user else None
+            other_summary = summary_for(target_user)
+
             if my_summary or other_summary:
                 profile_lines.append("참고 프로필 정보:")
                 if my_summary:
@@ -318,123 +380,4 @@ class ChatSuggestionView(APIView):
         return Response(
             {"suggestions": suggestions},
             status=status.HTTP_200_OK
-        )
-
-
-class ChatRoomListView(APIView):
-    """
-    내 토큰으로 내가 속한 채팅방 목록을 조회
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            user_id = request.user.id
-            rooms = []
-
-            # 내 ID가 포함된 방 이름 검색
-            qs = ChatRoom.objects.filter(name__contains=str(user_id))
-
-            for room in qs:
-                try:
-                    ids = [int(x) for x in room.name.split("-")]
-
-                    if user_id not in ids:
-                        continue
-
-                    # 상대방 ID 추출
-                    other_ids = [i for i in ids if i != user_id]
-                    other_id = other_ids[0] if other_ids else user_id
-
-                    # 상대방 프로필 정보 추가 (프론트엔드 편의성)
-                    other_nickname = "알 수 없는 사용자"
-                    other_image = None
-
-                    try:
-                        target_profile = UserProfile.objects.get(user_id=other_id)
-                        other_nickname = target_profile.nickname
-                        if target_profile.images.exists():
-                            other_image = target_profile.images.first().image.url
-                    except UserProfile.DoesNotExist:
-                        pass
-
-                    rooms.append({
-                        "room_name": room.name,
-                        "other_user_id": other_id,
-                        "other_nickname": other_nickname,
-                        "other_image": other_image
-                    })
-
-                except ValueError:
-                    continue
-
-            return Response(rooms, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class MessageUploadView(APIView):
-    """
-    [POST] /api/chat/upload/<str:room_name>/
-    이미지 파일 업로드하고, 웹소켓을 통해 채팅방에 알림
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, room_name):
-        # 1. 채팅방 존재 여부 확인
-        room, created = ChatRoom.objects.get_or_create(name=room_name)
-
-        # 2. 권환 확인
-        try:
-            user_ids = [int(uid) for uid in room_name.split('-')]
-            if request.user.id not in user_ids:
-                return Response(
-                    {"error": "이 채팅방에 메시지를 보낼 권한이 없습니다."},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        except:
-            return Response(
-                {"error": "잘못된 채팅방 이름입니다."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 3. 이미지 파일 가져오기
-        image_file = request.FILES.get('image')
-        content_text = request.data.get('message', '') # 텍스트도 같이 보낼 수 있음
-
-        if not image_file and not content_text:
-            return Response(
-                {"error": "이미나 텍스트 중 하나는 필수입니다."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # 4. DB에 메시지 저장
-        new_msg = Message.objects.create(
-            room = room,
-            sender = request.user,
-            content = content_text,
-            image = image_file
-        )
-
-        # 5. 웹소켓으로 실시간 알림 보내기
-        channel_layer = get_channel_layer()
-        room_group_name = f"chat_{room_name}"
-
-        # 보낼 데이터 구성 (이미지 URL 포함)
-        image_url = new_msg.image.url if new_msg.image else None
-
-        async_to_sync(channel_layer.group_send)(
-            room_group_name,
-            {
-                "type": "chat_message",
-                "message": new_msg.content,
-                "sender": request.user.username,
-                "image": image_url,
-                "timestamp": new_msg.timestamp.isoformat()
-            }
-        )
-
-        return Response(
-            MessageSerializer(new_msg).data,
-            status=status.HTTP_201_CREATED
         )

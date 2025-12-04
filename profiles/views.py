@@ -57,7 +57,6 @@ class MyTokenObtainPairView(TokenObtainPairView):
     """
     [POST] 로그인 API (JWT 발급)
     """
-
     serializer_class = MyTokenObtainPairSerializer
 
 
