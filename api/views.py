@@ -176,29 +176,3 @@ def get_recommend_matches(request):
 
     return Response(top_10, status=status.HTTP_200_OK)
 
-# 2. AI 기반 궁합/취향 분석 리포트 제공 기능 (향후 개발 예정)
-@api_view(['POST'])
-def generate_compatibility_report(request: Request) -> Response:
-     """
-     두 사용자의 전체 정보를 받아 AI가 관계 분석 리포트를 생성합니다. (구현 예정)
-     """
-# TODO: 아래 로직을 실제로 구현해야 합니다.
-# 1. 두 사용자의 전체 정보(user1, user2)를 request.data에서 가져옵니다.
-#    각 사용자 정보에는 생년월일시분, 취미, MBTI 등이 모두 포함되어야 합니다.
-# 2. 각 사용자의 생년월일시분 정보로 calculate_saju()를 각각 호출하여 사주 데이터를 얻습니다.
-# 3. 두 사용자의 사주 데이터, 취미, MBTI를 모두 종합하여 AI 프롬프트를 구성합니다.
-# 4. OpenAI API를 호출하여 리포트를 생성하고 반환합니다.
-pass # 아직 기능이 구현되지 않았으므로 비워둡니다.
-
-
-# 3. AI 기반 대화 어시스턴트 기능 (향후 개발 예정)
-@api_view(['POST'])
-def generate_conversation_starter(request: Request) -> Response:
-    """
-    두 사용자의 정보를 바탕으로 대화를 시작할 질문을 생성합니다. (구현 예정)
-    """
-# TODO: 아래 로직을 실제로 구현해야 합니다.
-# 1. 두 사용자의 정보(user1, user2)를 request.data에서 가져옵니다.
-# 2. 두 사용자의 취미, MBTI, (선택적으로) 사주 정보를 조합하여 AI 프롬프트를 구성합니다.
-# 3. OpenAI API를 호출하여 질문을 생성하고 반환합니다.
-pass # 아직 기능이 구현되지 않았으므로 비워둡니다.

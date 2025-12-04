@@ -4,7 +4,6 @@
 import os
 from django.core.wsgi import get_wsgi_application
 
-# --- ✨ settings.py 분리 관련 수정 사항 ---
 # TeamProject.settings가 아닌, TeamProject.settings.dev를 기본으로!
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.dev')
 

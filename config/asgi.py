@@ -16,7 +16,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.dev')
 
 # 1. http:// 요청은 기존 Django 방식으로 (get_asgi_application() 사용)
 # 2. ws:// 요청은 Channels 방식으로 (JwtAuthMiddleware/URLRouter 사용)
-#
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
     "websocket": JwtAuthMiddleware(

@@ -49,13 +49,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close()  # 차단했다면 연결 거부
             return
 
-        # 현재 접속한 유저가 방 멤버가 아니면 내쫓기
-        # if self.id not in room_user_ids:
-        #     print(f"[접근 거부] User {user.id}는 {self.room_name} 방의 멤버가 아닙니다.")
-        #     await self.close()
-        #     return
-
-
         # 4. 검증 통과 -> 방 입장 및 연결 수락
         self.room = await self.get_or_create_room(self.user, self.target_user)
 

@@ -1,12 +1,10 @@
 # api/saju_calculator.py
-# api/saju_calculator.py (전체 수정 코드)
 
 import datetime
 
 GAN = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"]
 JI = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"]
 
-# ✨ 여기에 'minute'를 추가해서 5개의 인자를 받도록 수정합니다.
 def calculate_saju(year, month, day, hour, minute):
     """
     사용자의 생년월일, 시, 분 정보를 포함하여 사주팔자를 계산하고,

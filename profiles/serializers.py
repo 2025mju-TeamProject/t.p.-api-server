@@ -45,13 +45,24 @@ class ProfileTextUpdateSerializer(serializers.ModelSerializer):
     """
     [PATCH] 사용자가 'profile_text' 외 프로필DB 필드 수정할 때 사용
     """
+    age = serializers.ReadOnlyField()
+    images = ProfileImageSerializer(many=True, read_only=True)
+
 
     class Meta:
         model = UserProfile
-        fields = ['nickname', 'gender', 'job', 'mbti',
-            'year', 'month', 'day', 'hour', 'minute', 'age', 'birth_time_unknown',
+        fields = [
+            'nickname',
+            'gender',
+            'year', 'month', 'day', 'hour', 'minute', 'birth_time_unknown',
+            'job',
+            'mbti',
+            'age',
             'location_city', 'location_district',
-            'hobbies', 'profile_text']
+            'hobbies',
+            'profile_text',
+            'images'
+        ]
 
         read_only_fields = ['user', 'latitude', 'longitude']
 

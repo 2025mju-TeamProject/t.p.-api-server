@@ -45,7 +45,7 @@ class UserLikeView(APIView):
         except:
             sender_nick = "알 수 없는 사용자"
         msg = f"{sender_nick}님에게 하트를 받았어요. 여기를 클릭하고 프로필을 확인해보세요!"
-        print(f"🚀 [PUSH 전송] To: {receiver.id} / Msg: {msg}")  # 여기에 나중에 FCM 코드 넣음
+        print(f"[PUSH 전송] To: {receiver.id} / Msg: {msg}")  # 여기에 나중에 FCM 코드 넣음
 
         return Response(
             {"message": "하트를 보냈습니다."},

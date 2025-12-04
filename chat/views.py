@@ -322,7 +322,7 @@ class ChatSuggestionView(APIView):
         # 3. 상황에 따른 지시사항 분기 처리
         if is_last_sender_me:
             # 내가 마지막에 보내면 나에게 맞는 대화 추천
-            ituation_instruction = (
+            situation_instruction = (
                 f"중요: 마지막 메시지는 나({user_nickname})가 보낸 거야.\n"
                 f"따라서 '상대방의 리액션(아하, 그렇구나 등)'을 추천하면 절대 안 돼.\n"
                 f"이미 내가 보낸 메시지에 이어서 보낼 수 있는 '추가적인 멘트'나 '자연스러운 화제 전환', 혹은 '질문'을 추천해줘."

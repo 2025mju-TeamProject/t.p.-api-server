@@ -10,7 +10,7 @@ from datetime import timedelta
 # (BASE_DIR이 base.py에 정의되어 있으므로 여기서도 사용 가능)
 
 # Secret Key
-localKeys = os.path.join(BASE_DIR, 'local.json') # 또는 secrets.json
+localKeys = os.path.join(BASE_DIR, 'local.json')
 
 with open(localKeys) as f:
     secrets = json.loads(f.read())
