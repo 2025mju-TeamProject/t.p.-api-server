@@ -76,23 +76,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
 
     async def receive(self, text_data):
-        # payload = json.loads(text_data)
-        # message_content = payload.get("message", "").strip()
-        # if not message_content:
-        #     return
-        # sender_user = self.scope["user"]
-        #
-        # await self.save_message(self.room, sender_user, message_content)
-        #
-        # await self.channel_layer.group_send(
-        #     self.room_group_name,
-        #     {
-        #         "type": "chat_message",
-        #         "message": message_content,
-        #         "sender": sender_user.username,
-        #     },
-        # )
-        pass
+        """웹소켓으로 들어온 메시지를 처리하는 함수"""
+        try:
+            payload = json.loads(text_data)
+            message_content = payload.get("message", "").strip()
+
+            # 빈 메시지는 무시
+            if not message_content:
+                return
+
+            # 1. DB에 저장
+            new_msg = await self.save_message(self.room, self.user, message_content)
+
+            # 2. 채팅방에 메시지 보내긱
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "chat_message",
+                    "message": new_msg.content,
+                    "sender": self.user.id,
+                    "sender_name": self.user.username,  # 편의상 username 보냄
+                    "image": None,  # 웹소켓 전송은 이미지 불가
+                    "timestamp": str(new_msg.timestamp)
+                }
+            )
+        except Exception as e:
+            print(f" [WebSocket Error] {e}")
 
     async def chat_message(self, event):
         # 1. 이벤트에서 데이터 추출
@@ -128,7 +137,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_message(self, room, user, content):
         """채팅 메시지를 DB에 저장함"""
-        Message.objects.create(room=room, sender=user, content=content)
+        msg = Message.objects.create(room=room, sender=user, content=content)
+        return msg
 
     @database_sync_to_async
     def get_user_instance(self, user_id):
