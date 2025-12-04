@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.conf import settings
+from datetime import date
 
 class UserProfile(models.Model):
     """소개팅 서비스 전용 사용자 프로필"""
@@ -51,7 +52,22 @@ class UserProfile(models.Model):
     ai_generated_at = models.DateTimeField(null=True, blank=True)
     photos = models.JSONField(default=list, blank=True)  # 프로필 사진 경로나 URL 리스트
 
+    @property
+    def age(self):
+        try:
+            # 생년월일이 하나라도 비어있으면 None 반환
+            if not (self.year and self.month and self.day):
+                return None
 
+            y = int(self.year)
+            m = int(self.month)
+            d = int(self.day)
+
+            today = date.today()
+
+            return today.year - y - ((today.month, today.day) < (m, d))
+        except (ValueError, TypeError):
+            return None
 
     # 회원가입에 사용할 휴대폰 번호
     phone_number = models.CharField(max_length=20, unique=True, blank=True, null=True)

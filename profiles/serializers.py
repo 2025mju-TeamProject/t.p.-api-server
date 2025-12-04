@@ -22,6 +22,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     """
     images = ProfileImageSerializer(many=True, read_only=True)
     user_id = serializers.IntegerField(source='user.id', read_only=True)
+    age = serializers.ReadOnlyField()
 
     class Meta:
         model = UserProfile
@@ -30,6 +31,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'user_id',
             'nickname',
             'gender',
+            'age',
             'year', 'month', 'day', 'hour', 'minute',
             'birth_time_unknown',
             'location_city', 'location_district',
@@ -47,7 +49,7 @@ class ProfileTextUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['nickname', 'gender', 'job', 'mbti',
-            'year', 'month', 'day', 'hour', 'minute', 'birth_time_unknown',
+            'year', 'month', 'day', 'hour', 'minute', 'age', 'birth_time_unknown',
             'location_city', 'location_district',
             'hobbies', 'profile_text']
 

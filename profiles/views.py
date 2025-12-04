@@ -554,17 +554,17 @@ class MatchSummaryView(APIView):
             data = calculate_saju(y, m, d, hour, minute)
             return data if "error" not in data else None
 
-        def age_from_profile(p):
-            try:
-                if not (p.year and p.month and p.day):
-                    return None
-                today = date.today()
-                years = today.year - p.year - (
-                    (today.month, today.day) < (p.month, p.day)
-                )
-                return years
-            except Exception:
-                return None
+        # def age_from_profile(p):
+        #     try:
+        #         if not (p.year and p.month and p.day):
+        #             return None
+        #         today = date.today()
+        #         years = today.year - p.year - (
+        #             (today.month, today.day) < (p.month, p.day)
+        #         )
+        #         return years
+        #     except Exception:
+        #         return None
 
         def hobbies_str(p):
             if isinstance(p.hobbies, list):
@@ -576,8 +576,8 @@ class MatchSummaryView(APIView):
         my_saju = saju_or_none(my_profile)
         other_saju = saju_or_none(other_profile)
 
-        my_age = age_from_profile(my_profile)
-        other_age = age_from_profile(other_profile)
+        my_age = my_profile.age
+        other_age = other_profile.age
 
         my_lines = [
             f"닉네임: {my_profile.nickname or me.username}",
@@ -660,7 +660,6 @@ class MatchSummaryView(APIView):
             {"summary": content},
             status=status.HTTP_200_OK
         )
-        return Response({"summary": content}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
