@@ -300,13 +300,39 @@ class ChatSuggestionView(APIView):
         messages = list(
             Message.objects.filter(room=room)
             .order_by("-timestamp")
-            .values("sender__username", "content")[:10][::-1]
+            .values("sender__id", "sender__username", "content")[:10][::-1]
         )
-        convo_text = "\n".join([f"{m['sender__username']}: {m['content']}" for m in messages]) or "(대화 없음)"
+
+        if not messages:
+            return Response(
+                {"error": "대화 내용이 부족하여 추천할 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        convo_text = "\n".join([f"{m['sender__username']}: {m['content']}" for m in messages])
 
         # 이름 정보
         user_nickname = request.user.username
         target_nickname = target_user.get_username()
+
+        # 2. 마지막 메시지가 누구인지 확인
+        last_message = messages[-1]
+        is_last_sender_me = (last_message['sender__id'] == user_id)
+
+        # 3. 상황에 따른 지시사항 분기 처리
+        if is_last_sender_me:
+            # 내가 마지막에 보내면 나에게 맞는 대화 추천
+            ituation_instruction = (
+                f"중요: 마지막 메시지는 나({user_nickname})가 보낸 거야.\n"
+                f"따라서 '상대방의 리액션(아하, 그렇구나 등)'을 추천하면 절대 안 돼.\n"
+                f"이미 내가 보낸 메시지에 이어서 보낼 수 있는 '추가적인 멘트'나 '자연스러운 화제 전환', 혹은 '질문'을 추천해줘."
+            )
+        else:
+            # 상대가 마지막에 보냄 -> 일반적인 답장 추천
+            situation_instruction = (
+                f"마지막 메시지는 상대방({target_nickname})이 보냈어.\n"
+                f"이에 대한 적절한 리액션이나 답장을 추천해줘."
+            )
 
         system_prompt_lines = [
             f"너는 User ID {user_id}(닉네임: {user_nickname})의 연애 코치이야.",
@@ -316,7 +342,7 @@ class ChatSuggestionView(APIView):
             "각 제안은 한두 문장으로 짧게 해줘.",
             "여기는 소개팅앱이고, 남녀가 서로 대화하는 상황이야.",
             "너는 최대한 대화가 잘 이루어질 수 있도록 도와줘야 해.",
-            f"최대한 {user_id}의 말투랑 비슷하게 하되, 대화에 유익한 방향으로 이끌어줘 말투가 문제라면 조금 다르게 해도 좋아."
+            f"최대한 {user_nickname}의 말투랑 비슷하게 하되, 대화에 유익한 방향으로 이끌어줘 말투가 문제라면 조금 다르게 해도 좋아."
         ]
         system_prompt = "\n".join(system_prompt_lines)
         profile_lines = []
@@ -363,7 +389,8 @@ class ChatSuggestionView(APIView):
             f"{convo_text}\n\n"
             f"{profile_block}\n\n" if profile_block else f"다음은 최근 채팅 내역이야.\n{convo_text}\n\n"
         ) + (
-            f"위 대화 흐름을 보고, User {user_id}(나)가 보낼 적절한 답변 3개를 추천해줘.\n"
+            f"\n{situation_instruction}\n\n"
+            f"반드시 {user_id}(나)가 보낼 적절한 답변 3개를 추천해줘.\n"
             f"마지막에 누가 말했든 상관없이, 무조건 User {user_id}의 입장에서 답장을 만들어야 해.\n"
             'JSON 배열 형태로만 응답해: ["제안1", "제안2", "제안3"]. '
             "각 제안은 짧게."
@@ -377,7 +404,7 @@ class ChatSuggestionView(APIView):
                     {"role": "user", "content": user_prompt},
                 ],
                 max_tokens=300,
-                temperature=0.8,
+                temperature=0.7,
             )
             content = completion.choices[0].message.content
             suggestions = json.loads(content)
