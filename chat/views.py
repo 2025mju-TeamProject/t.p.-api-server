@@ -282,6 +282,8 @@ class ChatSuggestionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, target_id):
+        user_id = request.user.id
+
         try:
             target_user = User.objects.get(id=target_id)
         except User.DoesNotExist:
@@ -302,13 +304,19 @@ class ChatSuggestionView(APIView):
         )
         convo_text = "\n".join([f"{m['sender__username']}: {m['content']}" for m in messages]) or "(대화 없음)"
 
+        # 이름 정보
+        user_nickname = request.user.username
+        target_nickname = target_user.get_username()
+
         system_prompt_lines = [
+            f"너는 User ID {user_id}(닉네임: {user_nickname})의 연애 코치이야.",
+            f"상대방은 User ID {target_id}(닉네임: {target_nickname})이야.",
             "너는 친근하고 예의있는 대화 코치야. 개인정보 요구나 공격적인 표현은 피한다.",
             "사용자가 다음 메시지로 보낼 수 있는 자연스러운 답변을 3~4개 제안해줘.",
             "각 제안은 한두 문장으로 짧게 해줘.",
             "여기는 소개팅앱이고, 남녀가 서로 대화하는 상황이야.",
             "너는 최대한 대화가 잘 이루어질 수 있도록 도와줘야 해.",
-            "최대한 sender의 말투랑 비슷하게 하되, 대화에 유익한 방향으로 이끌어줘 말투가 문제라면 조금 다르게 해도 좋아."
+            f"최대한 {user_id}의 말투랑 비슷하게 하되, 대화에 유익한 방향으로 이끌어줘 말투가 문제라면 조금 다르게 해도 좋아."
         ]
         system_prompt = "\n".join(system_prompt_lines)
         profile_lines = []
@@ -335,24 +343,28 @@ class ChatSuggestionView(APIView):
             return "; ".join(parts) if parts else None
 
         if len(messages) < 10:
-            my_summary = summary_for(request.user)
-            other_summary = summary_for(target_user)
+            user_summary = summary_for(request.user)
+            target_summary = summary_for(target_user)
 
-            if my_summary or other_summary:
+            if user_summary or target_summary:
                 profile_lines.append("참고 프로필 정보:")
-                if my_summary:
-                    profile_lines.append(f"- 나: {my_summary}")
-                if other_summary:
-                    profile_lines.append(f"- 상대: {other_summary}")
+                if user_summary:
+                    profile_lines.append(f"- 나: {user_summary}")
+                if target_summary:
+                    profile_lines.append(f"- 상대: {target_summary}")
 
         profile_block = "\n".join(profile_lines)
 
         user_prompt = (
+            f"상황 설정:\n"
+            f"- 나 (User ID {user_id}): {user_nickname}\n"
+            f"- 상대방 (User ID {target_id}): {target_nickname}\n\n"
             "다음은 최근 채팅 내역이야.\n"
             f"{convo_text}\n\n"
             f"{profile_block}\n\n" if profile_block else f"다음은 최근 채팅 내역이야.\n{convo_text}\n\n"
         ) + (
-            "다음 메시지로 보낼 수 있는 자연스러운 답변을 3개 제안해줘. "
+            f"위 대화 흐름을 보고, User {user_id}(나)가 보낼 적절한 답변 3개를 추천해줘.\n"
+            f"마지막에 누가 말했든 상관없이, 무조건 User {user_id}의 입장에서 답장을 만들어야 해.\n"
             'JSON 배열 형태로만 응답해: ["제안1", "제안2", "제안3"]. '
             "각 제안은 짧게."
         )
