@@ -283,7 +283,7 @@ class ChatSuggestionView(APIView):
 
     def post(self, request, target_id):
         try:
-            target_user = User.objects.get(name=target_id)
+            target_user = User.objects.get(id=target_id)
         except User.DoesNotExist:
             return Response(
                 {"error": "상대방을 찾을 수 없습니다."},
