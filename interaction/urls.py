@@ -8,6 +8,6 @@ urlpatterns = [
     # 하트 보내기: (POST /api/interaction/like/3/)
     path('like/<int:receiver_id>/', UserLikeView.as_view(), name='send-like'),
 
-    # 목록 보기: (GET /api/interaction/likes/?type=rerceived 이거나 sent)
+    # 목록 보기: (GET /api/interaction/likes/?type=received 이거나 sent)
     path('likes/', LikeListView.as_view(), name='like-list')
 ]
