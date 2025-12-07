@@ -173,7 +173,7 @@ class SimpleProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['user_id', 'nickname', 'image']
+        fields = ['user_id', 'nickname', 'image', 'age', 'location_city', 'location_district', 'mbti']
 
     def get_image(self, obj):
         if obj.images.exists():

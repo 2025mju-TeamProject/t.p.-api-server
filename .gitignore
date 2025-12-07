@@ -180,3 +180,5 @@ db.sqlite3
 sabbadang.pem
 
 /profiles/management/
+
+firebase-adminsdk.json
