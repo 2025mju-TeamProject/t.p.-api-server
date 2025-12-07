@@ -42,4 +42,7 @@ urlpatterns = [
 
     # 11. Token 유효성 검사 (GET /api/token/verify/)
     path('token/verify/', TokenVerifyView.as_view(), name="token_verify"),
+
+    # 12. FCM 토큰 등록 (POST /api/users/fcm/register/)
+    # path('fcm/rregister/', views.FCMTokenregisterView.as_view(), name='fcm-register'),
 ]

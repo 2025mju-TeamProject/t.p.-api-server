@@ -751,3 +751,27 @@ def report_chat_user(request, target_id):
         )
     return Response(serializer.errors,
         status = status.HTTP_400_BAD_REQUEST)
+
+# class FCMTokenregisterView(APIView):
+#     """
+#     [POST] /api/users/fcm/register/
+#     FCM 토큰을 DB에 업데이트
+#     """
+#     permissions_classes = [permissions.IsAuthenticated]
+#
+#     def post(self, request):
+#         token = request.data.get("fcm_token")
+#         if not token:
+#             return Response(
+#                 {"error": "토큰이 없습니다."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#         profile = request.user.profile
+#         profile.fcm_token = token
+#         profile.save()
+#
+#         return Response(
+#             {"message": "FCM 토큰이 등록되었습니다."},
+#             status=status.HTTP_200_OK
+#         )

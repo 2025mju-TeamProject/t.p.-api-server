@@ -1,9 +1,10 @@
 # config/settings/base.py
-import os, json
+import os, json, firebase_admin
 from pathlib import Path
 
 from django.conf.global_settings import MEDIA_URL, MEDIA_ROOT
 from django.core.exceptions import ImproperlyConfigured
+from firebase_admin import credentials
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -177,3 +178,17 @@ REST_FRAMEWORK = {
 # 미디어 파일(사용자 업로드) 설정
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Firebase 관련 설정
+# 1. 키 파일 경로 지정
+FIREBASE_CRED_PATH = os.path.join(BASE_DIR, 'firebase-adminsdk.json')
+
+# 2. Firebase 앱 초기화
+if not firebase_admin._apps:
+    try:
+        cred = credentials.Certificate(FIREBASE_CRED_PATH)
+        firebase_admin.initialize_app(cred)
+        print("Firebase Admin SDK Initialized")
+    except Exception as e:
+        print(f"Firebase Initialization Failed: {e}")
+
